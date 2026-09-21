@@ -1,0 +1,1797 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="theme-color" content="#0c0b16"/>
+<title>Game of Life v5</title>
+<style>
+:root{--p:#7F77DD;--pd:#534AB7;--pm:#AFA9EC;--bg:#0c0b16;--s1:#181628;--s2:#211e36;--bd:rgba(127,119,221,0.2);--tx:#f0eeff;--tm:#9990cc;--gr:#1D9E75;--rd:#E24B4A;--am:#EF9F27;--bl:#378ADD;--safe:env(safe-area-inset-bottom,0px);--top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{background:var(--bg)}
+body{min-height:100vh;background:var(--bg);color:var(--tx);font-family:-apple-system,'SF Pro Display',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(120% 55% at 50% -8%,#231d52 0%,rgba(12,11,22,0) 70%);pointer-events:none;z-index:0}
+button,input,select,textarea{font-family:inherit}
+.no-res,.empty-msg{font-size:12px;color:var(--tm);text-align:center;padding:16px 0}
+/* DRAWER */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:200;transition:background .3s}
+.drawer-overlay.open{background:rgba(0,0,0,0.55);pointer-events:all}
+.drawer{position:fixed;top:0;left:-290px;bottom:0;width:280px;background:#12111f;border-right:1px solid var(--bd);z-index:201;transition:left .28s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow-y:auto}
+.drawer.open{left:0}
+.drawer-hdr{padding:calc(48px + var(--top)) 20px 16px;border-bottom:1px solid var(--bd)}
+.drawer-title{font-size:11px;color:var(--tm);margin-bottom:12px}
+.drawer-user{font-size:17px;font-weight:600;margin-bottom:4px}
+.drawer-sub{font-size:12px;color:var(--pm)}
+.drawer-sections{padding:12px 0;flex:1}
+.drawer-section-title{font-size:11px;color:var(--tm);padding:12px 20px 5px;font-weight:500}
+.drawer-item{display:flex;align-items:center;gap:12px;padding:11px 20px;cursor:pointer}
+.drawer-item.active{background:rgba(127,119,221,0.14)}
+.drawer-item.active .di-label{color:var(--pm);font-weight:600}
+.di-icon{font-size:18px;width:22px;text-align:center;flex-shrink:0}
+.di-label{font-size:14px}
+.drawer-footer{padding:12px 20px calc(16px + var(--safe));border-top:1px solid var(--bd)}
+.drawer-footer-btn{display:flex;align-items:center;gap:10px;padding:9px 0;cursor:pointer;color:var(--tm);font-size:13px}
+/* MAIN */
+.app{position:relative;z-index:1;max-width:430px;margin:0 auto;padding:calc(6px + var(--top)) 14px calc(150px + var(--safe))}
+.hdr{display:flex;align-items:flex-end;justify-content:space-between;padding:14px 0 12px}
+.hdr h1{font-size:30px;font-weight:700;letter-spacing:-.6px;line-height:1.1}
+.hdr-sub{font-size:13px;color:var(--tm);margin-top:3px;text-transform:capitalize}
+.hdr-btns{display:flex;gap:2px;background:var(--s1);border:1px solid var(--bd);border-radius:20px;padding:3px}
+.icon-btn{background:none;border:none;border-radius:16px;color:var(--tx);font-size:15px;padding:7px 11px;cursor:pointer}
+.icon-btn:active{background:rgba(127,119,221,.2)}
+/* BACKUP BANNER */
+.bk-banner{display:flex;align-items:center;gap:8px;background:rgba(239,159,39,.12);border:1px solid rgba(239,159,39,.35);border-radius:14px;padding:9px 12px;margin-bottom:10px}
+.bk-banner.hidden{display:none}
+.bk-txt{flex:1;font-size:12px;color:var(--am);line-height:1.35}
+.bk-btn{background:rgba(239,159,39,.2);border:1px solid rgba(239,159,39,.45);color:var(--am);font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer}
+.bk-x{color:var(--tm);font-size:17px;cursor:pointer;padding:0 3px}
+/* BALANCE */
+.bal-card{background:linear-gradient(160deg,#272246,#1d1a33);border:1px solid var(--bd);border-radius:22px;padding:15px 16px;margin-bottom:10px}
+.bal-row{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.bal-left .lbl{font-size:12px;color:var(--tm);margin-bottom:3px}
+.bal-val{font-size:38px;font-weight:700;color:var(--tx);line-height:1;cursor:pointer;display:inline-block;letter-spacing:-1px}
+.bal-mode-badge{font-size:11px;padding:3px 10px;border-radius:20px;margin-top:7px;display:inline-block;font-weight:500}
+.mode-normal{background:rgba(29,158,117,0.18);color:var(--gr)}
+.mode-saving{background:rgba(239,159,39,0.18);color:var(--am)}
+.mode-crisis{background:rgba(226,75,74,0.18);color:var(--rd)}
+.bal-right{text-align:right;flex-shrink:0}
+.streak-badge{display:flex;align-items:center;gap:4px;justify-content:flex-end;margin-bottom:2px}
+.streak-badge strong{font-size:22px;font-weight:700;color:var(--am)}
+.streak-lbl{font-size:11px;color:var(--tm)}
+.lvl-badge{font-size:12px;color:var(--pm);background:rgba(127,119,221,0.14);padding:4px 10px;border-radius:20px;cursor:pointer;margin-top:7px;display:inline-block}
+.bal-edit-row{display:none;gap:6px;margin-top:10px;align-items:center}
+.bal-edit-row.show{display:flex}
+.bal-inp{background:var(--bg);border:1px solid var(--p);border-radius:10px;padding:6px 10px;color:var(--p);font-size:16px;font-weight:600;width:110px;outline:none;text-align:center}
+.sm-btn{border:none;border-radius:10px;color:#fff;padding:7px 13px;cursor:pointer;font-size:12px;font-weight:500}
+.bal-meta{display:flex;gap:12px;margin-top:11px;flex-wrap:wrap;padding-top:9px;border-top:1px solid var(--bd)}
+.bal-meta span{font-size:12px;color:var(--tm)}
+.bal-meta strong{color:var(--tx)}
+.lvl-wrap{margin-bottom:8px}
+.lvl-hdr{display:flex;justify-content:space-between;font-size:11px;color:var(--tm);margin-bottom:4px}
+.lvl-hdr b{color:var(--p)}
+.lvl-bg{background:var(--s2);border-radius:20px;height:7px;overflow:hidden}
+.lvl-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--pd),var(--p));transition:width .5s}
+.lvl-sub{font-size:11px;color:var(--tm);margin-top:4px;text-align:right}
+.lvl-sub b{color:var(--am)}
+/* UNDO */
+.undo-bar{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid rgba(239,159,39,0.3);border-radius:14px;padding:9px 12px;margin-bottom:10px}
+.undo-bar.hidden{display:none}
+.undo-txt{font-size:12px;color:var(--am);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.undo-btn{background:rgba(239,159,39,0.16);border:1px solid rgba(239,159,39,0.35);color:var(--am);font-size:12px;padding:4px 12px;border-radius:20px;cursor:pointer;white-space:nowrap}
+/* SEARCH / CHIPS */
+.search-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.s-inp{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:9px 12px;color:var(--tx);font-size:14px;outline:none}
+.s-inp::placeholder{color:var(--tm)}
+.sort-sel{background:var(--s2);border:1px solid var(--bd);border-radius:12px;color:var(--tm);font-size:12px;padding:9px 8px;outline:none}
+.chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:1px}
+.chips::-webkit-scrollbar{display:none}
+.chip{background:var(--s2);border:1px solid var(--bd);border-radius:20px;color:var(--tm);font-size:12px;padding:6px 12px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.chip.active{background:rgba(127,119,221,0.22);border-color:var(--p);color:var(--pm)}
+/* MISSIONS */
+.section{margin-bottom:9px}
+.sec-hdr{display:flex;align-items:center;gap:7px;padding:11px 13px;background:var(--s2);border-radius:16px 16px 0 0;border:1px solid var(--bd);border-bottom:none;cursor:pointer;user-select:none}
+.sec-hdr.closed{border-radius:16px;border-bottom:1px solid var(--bd)}
+.sec-pin{font-size:12px;cursor:pointer;opacity:.35;flex-shrink:0}
+.sec-pin.on{opacity:1}
+.sec-title{font-size:13px;font-weight:600;flex:1}
+.sec-meta{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.sec-left{font-size:11px;color:var(--am)}
+.sec-done2{font-size:11px;color:var(--gr)}
+.sec-cnt{font-size:11px;color:var(--tm)}
+.sec-arr{color:var(--tm);font-size:9px;transition:transform .18s}
+.sec-arr.o{transform:rotate(90deg)}
+.tasks-wrap{border:1px solid var(--bd);border-top:none;border-radius:0 0 16px 16px;overflow:hidden}
+.t-row{display:flex;align-items:center;gap:8px;padding:11px 12px;background:var(--s1);border-bottom:1px solid rgba(127,119,221,0.08)}
+.t-row:last-child{border-bottom:none}
+.t-row.done{opacity:.38}
+.t-row.done .t-name{text-decoration:line-through}
+.t-row.pin-t{background:rgba(83,74,183,0.12)}
+.cb{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--p);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .14s}
+.cb.on{background:var(--p);border-color:var(--p)}
+.cb.on::after{content:'';display:block;width:5px;height:9px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg) translate(-1px,-1px)}
+.t-name{flex:1;font-size:14px;line-height:1.3}
+.t-tags{display:flex;gap:3px;flex-shrink:0}
+.tg{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:500}
+.tg-u{background:rgba(226,75,74,0.16);color:var(--rd)}
+.tg-r{background:rgba(55,138,221,0.16);color:var(--bl)}
+.tg-l{background:rgba(239,159,39,0.16);color:var(--am)}
+.tg-e{background:rgba(29,158,117,0.16);color:var(--gr)}
+.t-pts{font-size:11px;color:var(--pm);background:rgba(127,119,221,0.14);padding:3px 8px;border-radius:20px;flex-shrink:0;white-space:nowrap}
+.t-acts{display:flex;gap:4px;flex-shrink:0}
+.t-pin{color:var(--tm);font-size:12px;cursor:pointer;opacity:.28}
+.t-pin.on{opacity:1;color:var(--am)}
+.t-del{background:none;border:none;color:var(--tm);font-size:18px;cursor:pointer;opacity:.35;line-height:1;padding:2px 5px}
+.add-row{display:flex;gap:5px;padding:9px 10px;background:var(--s1);border-top:1px dashed rgba(127,119,221,0.15)}
+.a-inp{flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px 10px;color:var(--tx);font-size:14px;outline:none;min-width:0}
+.a-inp::placeholder{color:var(--tm)}
+.p-inp{width:48px;background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px 3px;color:var(--p);font-size:13px;text-align:center;outline:none}
+.tg-sel{background:var(--s2);border:1px solid var(--bd);border-radius:10px;padding:8px 3px;color:var(--tm);font-size:11px;outline:none;width:62px}
+.a-btn{background:var(--pd);border:none;border-radius:10px;color:#fff;font-size:18px;padding:0 13px;cursor:pointer;flex-shrink:0}
+.ns-row{display:flex;gap:6px;margin-top:10px}
+.ns-inp{flex:1;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:9px 11px;color:var(--tx);font-size:14px;outline:none;min-width:0}
+.ns-btn{background:var(--s2);border:1px solid var(--p);border-radius:12px;color:var(--p);font-size:12px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.btn-main{background:var(--pd);border:1px solid var(--p);border-radius:12px;color:#fff;font-size:14px;font-weight:600;padding:10px 16px;cursor:pointer}
+.btn-sec{background:var(--s1);border:1px solid var(--bd);border-radius:12px;color:var(--tx);font-size:13px;padding:10px 14px;cursor:pointer;text-align:left;width:100%;margin-top:7px;display:flex;align-items:center;gap:9px}
+.btn-sec:active,.btn-main:active{transform:scale(.98)}
+/* INBOX */
+.inbox-card{background:var(--s2);border:1px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:10px}
+.inbox-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.inbox-title{font-size:14px;font-weight:600}
+.inbox-cnt{font-size:12px;color:var(--am);background:rgba(239,159,39,0.15);padding:2px 9px;border-radius:20px}
+.inbox-add{display:flex;gap:6px;margin-bottom:8px}
+.inbox-item{display:flex;align-items:center;gap:8px;padding:10px 11px;background:var(--s1);border-radius:12px;margin-bottom:6px}
+.inbox-item-name{font-size:14px}
+.inbox-process-btn{background:var(--pd);border:none;border-radius:9px;color:#fff;font-size:11px;padding:5px 10px;cursor:pointer;white-space:nowrap}
+.inbox-del{color:var(--tm);font-size:18px;cursor:pointer;opacity:.4}
+/* PLANNER */
+.plan-hdr{font-size:13px;color:var(--tm);margin-bottom:9px}
+.plan-hdr b{color:var(--tx);text-transform:capitalize}
+.plan-add{display:flex;gap:6px;margin-bottom:11px}
+.plan-list{display:flex;flex-direction:column;gap:6px}
+.plan-task{display:flex;align-items:center;gap:8px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:11px 12px}
+.plan-task.done{opacity:.4}
+.plan-task.done .t-name{text-decoration:line-through}
+.dl-box{margin-top:14px}
+.dl-title{font-size:12px;color:var(--tm);margin-bottom:6px}
+.dl-row{display:flex;align-items:center;gap:8px;background:var(--s1);border:1px solid rgba(239,159,39,.3);border-radius:14px;padding:10px 12px;margin-bottom:6px;cursor:pointer}
+.dl-row.over{border-color:rgba(226,75,74,.45)}
+.dl-row span:nth-child(2){flex:1;font-size:13px}
+.dl-when{font-size:11px;color:var(--am)}
+.dl-row.over .dl-when{color:var(--rd)}
+/* HABITS */
+.habit-card{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:13px;margin-bottom:8px}
+.h-top{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.h-emoji{font-size:22px;flex-shrink:0}
+.h-info{flex:1}
+.h-name{font-size:14px;font-weight:500}
+.h-streak{font-size:11px;color:var(--tm);margin-top:1px}
+.h-streak b{color:var(--am);font-size:13px}
+.h-chk{width:36px;height:36px;border-radius:11px;border:1.5px solid var(--p);background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--pm);transition:all .18s}
+.h-chk.dt{background:var(--p);border-color:var(--p);color:#fff}
+.h-dots-row{display:flex;gap:4px;align-items:center;margin-bottom:9px;flex-wrap:wrap}
+.h-dot{width:17px;height:17px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.h-dot-lbl{font-size:7px;color:rgba(255,255,255,0.75);font-weight:600}
+.h-footer{display:flex;align-items:center;justify-content:space-between}
+.h-del-btn{background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.25);color:var(--rd);font-size:11px;padding:4px 11px;border-radius:20px;cursor:pointer}
+.h-add{background:var(--s2);border:1px dashed rgba(127,119,221,0.3);border-radius:16px;padding:11px;margin-top:4px}
+.h-add-row{display:flex;gap:6px;align-items:center}
+.h-em-inp{width:42px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:7px 4px;font-size:17px;text-align:center;outline:none;color:var(--tx)}
+.h-note{font-size:11px;color:var(--tm);margin-top:6px}
+/* WEEK */
+.wk-card{background:var(--s2);border:1px solid var(--bd);border-radius:18px;padding:14px;margin-bottom:9px}
+.wk-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.wk-title{font-size:14px;font-weight:600}
+.wk-bonus{font-size:11px;color:var(--am)}
+.wk-list{display:flex;flex-direction:column;gap:9px}
+.wk-goal{display:flex;align-items:center;gap:9px}
+.wk-goal.done .wk-name{text-decoration:line-through;opacity:.45}
+.wk-name{flex:1;font-size:14px}
+.wk-pts{font-size:11px;color:var(--am);background:rgba(239,159,39,0.13);padding:2px 8px;border-radius:20px}
+.wk-del{color:var(--tm);font-size:18px;cursor:pointer;opacity:.4}
+.wk-add{display:flex;gap:6px;margin-top:11px}
+/* GOALS */
+.g-new-btn{width:100%;background:rgba(127,119,221,.14);border:1px dashed rgba(127,119,221,.5);color:var(--pm);border-radius:16px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px}
+.g-add{display:none;background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:14px;margin-bottom:12px}
+.g-add.open{display:block}
+.seg{display:flex;background:var(--s1);border-radius:12px;padding:3px;gap:3px;margin-bottom:10px}
+.seg button{flex:1;background:none;border:none;color:var(--tm);padding:8px;border-radius:10px;font-size:13px;font-weight:500;cursor:pointer}
+.seg button.on{background:var(--pd);color:#fff}
+.g-dates{display:flex;gap:8px;margin:10px 0 8px}
+.g-dates label{flex:1;font-size:11px;color:var(--tm);display:flex;flex-direction:column;gap:4px}
+.g-dates input{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:8px;color:var(--tx);font-size:14px;outline:none;width:100%;min-height:38px;color-scheme:dark}
+.g-presets{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.gcard{background:linear-gradient(165deg,#241f42,#1a1730);border:1px solid var(--bd);border-radius:22px;padding:15px;margin-bottom:10px}
+.gcard.gc-done{opacity:.78}
+.gcard.gc-over{border-color:rgba(226,75,74,.5)}
+.g-top{display:flex;align-items:center;gap:11px;margin-bottom:13px}
+.g-emo{font-size:26px;width:44px;height:44px;border-radius:14px;background:rgba(127,119,221,.15);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.g-info{flex:1;min-width:0}
+.g-name{font-size:16px;font-weight:600;line-height:1.25}
+.gc-done .g-name{text-decoration:line-through}
+.g-sub{font-size:12px;color:var(--tm);margin-top:3px}
+.gc-over .g-sub{color:var(--rd)}
+.g-ring{position:relative;width:50px;height:50px;flex-shrink:0}
+.g-ring svg{width:50px;height:50px;transform:rotate(-90deg)}
+.g-ring circle{fill:none;stroke-width:5;stroke-linecap:round}
+.g-ring .rb{stroke:rgba(127,119,221,.18)}
+.g-ring .rf{stroke:var(--p);transition:stroke-dasharray .6s}
+.gc-over .rf{stroke:var(--rd)}.gc-done .rf{stroke:var(--gr)}
+.g-ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700}
+.g-dots{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px}
+.gd{width:10px;height:10px;border-radius:50%;background:rgba(127,119,221,.16);transition:background .3s}
+.gd.f{background:var(--p)}
+.gd.t{box-shadow:0 0 0 2px rgba(175,169,236,.45),0 0 9px var(--p)}
+.gc-over .gd.f{background:var(--rd)}
+.gc-done .gd.f{background:var(--gr)}
+.g-cap{font-size:11px;color:var(--tm);margin:-6px 0 11px}
+.g-foot{display:flex;align-items:center;gap:8px}
+.g-foot input[type=date]{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:5px 6px;color:var(--tm);font-size:12px;outline:none;color-scheme:dark;min-height:32px;max-width:132px}
+.g-foot .sp{flex:1}
+.g-done-btn{background:rgba(29,158,117,.16);border:1px solid rgba(29,158,117,.4);color:var(--gr);font-size:13px;font-weight:600;padding:7px 14px;border-radius:20px;cursor:pointer;white-space:nowrap}
+.gc-done .g-done-btn{background:var(--s1);border-color:var(--bd);color:var(--tm)}
+/* FINANCE */
+.today-card{background:linear-gradient(160deg,#272246,#1b1831);border:1px solid var(--bd);border-radius:24px;padding:17px 18px;margin-bottom:10px;cursor:pointer}
+.tc-lbl{font-size:13px;color:var(--tm)}
+.tc-big{font-size:40px;font-weight:700;letter-spacing:-1.2px;margin:4px 0 6px;line-height:1.1}
+.tc-big.neg{color:var(--rd)}
+.tc-row{display:flex;justify-content:space-between;font-size:14px;margin-top:12px;padding-top:12px;border-top:1px solid var(--bd)}
+.tc-row span:first-child{color:var(--tm)}
+.tc-bar{background:rgba(127,119,221,.15);border-radius:20px;height:8px;overflow:hidden;margin-top:8px}
+.tc-bar i{display:block;height:100%;width:0;border-radius:20px;background:linear-gradient(90deg,var(--pd),var(--p));transition:width .5s}
+.tc-bar i.over{background:var(--rd)}
+.tc-hint{font-size:12px;color:var(--tm);margin-top:8px}
+.q-open{display:flex;align-items:center;gap:10px;width:100%;background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:14px 16px;color:var(--tm);font-size:16px;cursor:pointer;margin-bottom:10px;text-align:left}
+.q-open b{color:var(--pm);font-size:20px;font-weight:500}
+.fin-summary{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px}
+.fin-card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:11px 12px}
+.fin-lbl{font-size:11px;color:var(--tm);margin-bottom:3px}
+.fin-val{font-size:17px;font-weight:600;white-space:nowrap}
+.fin-val.inc{color:var(--gr)}.fin-val.exp{color:var(--tx)}.fin-val.b2{color:var(--p)}.fin-val.neg{color:var(--rd)}
+.fin-chart{background:var(--s1);border:1px solid var(--bd);border-radius:18px;padding:13px;margin-bottom:10px}
+.fin-chart-title{font-size:12px;color:var(--tm);margin-bottom:10px;font-weight:500}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.bar-lbl{font-size:12px;color:var(--tm);width:82px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-bg{flex:1;background:var(--s2);border-radius:20px;height:6px;overflow:hidden}
+.bar-fill{height:100%;border-radius:20px;transition:width .4s}
+.bar-val{font-size:12px;color:var(--tm);width:68px;text-align:right;flex-shrink:0}
+.wbar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.wbar{width:100%;border-radius:4px 4px 0 0;min-height:2px;transition:height .4s}
+.wbar-lbl{font-size:9px;color:var(--tm);text-align:center}
+.fin-day{display:flex;justify-content:space-between;align-items:baseline;padding:14px 4px 7px}
+.fin-day b{font-size:16px;font-weight:600;color:var(--pm)}
+.fin-day span{font-size:13px;color:var(--tm)}
+.fin-list{background:var(--s1);border:1px solid var(--bd);border-radius:18px;overflow:hidden}
+.fin-item{display:flex;align-items:center;gap:10px;padding:11px 13px;border-bottom:1px solid rgba(127,119,221,0.08)}
+.fin-item:last-child{border-bottom:none}
+.fin-cat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.fin-item-info{flex:1;min-width:0}
+.fin-item-name{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fin-item-cat{font-size:12px;color:var(--tm)}
+.fin-item-amt{font-size:15px;font-weight:600;flex-shrink:0;white-space:nowrap}
+.fin-item-amt.inc{color:var(--gr)}
+.fin-item-del{color:var(--tm);font-size:17px;cursor:pointer;opacity:.3;flex-shrink:0;padding:0 2px}
+/* QUICK SHEET */
+.q-back{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .22s;z-index:300}
+.q-back.open{opacity:1;pointer-events:all}
+.q-sheet{position:fixed;left:8px;right:8px;bottom:8px;max-width:414px;margin:0 auto;background:#1c1932;border:1px solid rgba(127,119,221,.3);border-radius:28px;padding:16px 16px 14px;z-index:301;transform:translateY(130%);transition:transform .28s cubic-bezier(.3,.9,.3,1);box-shadow:0 -10px 40px rgba(0,0,0,.5)}
+.q-sheet.open{transform:none}
+.q-line{display:flex;align-items:center;gap:10px}
+.q-in{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--tx);font-size:24px;font-weight:500;padding:6px 0}
+.q-in::placeholder{color:rgba(153,144,204,.5)}
+.q-go{width:48px;height:48px;border-radius:50%;background:var(--p);border:none;color:#fff;font-size:24px;cursor:pointer;flex-shrink:0;opacity:.45;transition:opacity .15s}
+.q-go.ok{opacity:1}
+.q-recent{display:flex;gap:7px;overflow-x:auto;scrollbar-width:none;margin:10px 0 2px}
+.q-recent::-webkit-scrollbar{display:none}
+.qchip{display:flex;align-items:center;gap:6px;background:rgba(127,119,221,.15);border:1px solid rgba(127,119,221,.4);color:var(--pm);font-size:14px;padding:8px 13px;border-radius:20px;white-space:nowrap;cursor:pointer;flex-shrink:0}
+.q-opts{display:flex;gap:7px;align-items:center;margin-top:10px;flex-wrap:wrap}
+.qopt{background:var(--s2);border:1px solid var(--bd);color:var(--tx);font-size:14px;padding:8px 13px;border-radius:20px;cursor:pointer;outline:none}
+.qopt.inc{color:var(--gr);border-color:rgba(29,158,117,.5);background:rgba(29,158,117,.12)}
+select.qopt{appearance:none;-webkit-appearance:none;padding-right:13px}
+.q-prev{font-size:13px;color:var(--tm);margin-top:9px;min-height:18px}
+/* PAYMENT CALENDAR */
+.pay-cal-card{background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:14px;margin-bottom:10px}
+.pay-cal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.pay-cal-title{font-size:14px;font-weight:600}
+.pay-cal-nav{display:flex;align-items:center;gap:8px}
+.pay-cal-nav button{background:var(--s1);border:1px solid var(--bd);border-radius:9px;color:var(--tx);padding:4px 10px;cursor:pointer;font-size:14px}
+.pay-cal-month{font-size:12px;color:var(--pm);font-weight:500}
+.pay-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:10px}
+.pay-cal-day-lbl{font-size:10px;color:var(--tm);text-align:center;padding:3px 0}
+.pay-cal-day{min-height:38px;border-radius:10px;background:var(--s1);display:flex;flex-direction:column;align-items:center;padding:4px 2px;border:1px solid transparent}
+.pay-cal-day.today{border-color:var(--p)}
+.pay-cal-day.has-payment{background:rgba(127,119,221,0.12)}
+.pay-cal-day-num{font-size:11px;color:var(--tx);font-weight:500;line-height:1.2}
+.pay-cal-day.empty{background:transparent;border-color:transparent}
+.pay-dot{width:5px;height:5px;border-radius:50%;margin-top:2px}
+.pay-cal-day.past .pay-cal-day-num{color:var(--tm)}
+.pay-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.pay-item{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--s1);border-radius:14px;border-left:3px solid var(--p)}
+.pay-item.overdue{border-left-color:var(--rd)}
+.pay-item.paid{opacity:.5;border-left-color:var(--gr)}
+.pay-item-info{flex:1;min-width:0}
+.pay-item-name{font-size:14px;font-weight:500}
+.pay-item-date{font-size:11px;color:var(--tm)}
+.pay-item-amt{font-size:13px;font-weight:600;color:var(--rd)}
+.pay-item-paid-btn{background:rgba(29,158,117,0.15);border:1px solid rgba(29,158,117,0.35);color:var(--gr);font-size:11px;padding:5px 10px;border-radius:20px;cursor:pointer;white-space:nowrap}
+.pay-add-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px;padding-top:11px;border-top:1px dashed var(--bd)}
+.pay-day-inp{width:52px;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:8px 3px;color:var(--p);font-size:13px;text-align:center;outline:none}
+/* REWARDS */
+.rew-tier{font-size:12px;color:var(--tm);padding:10px 3px 5px;font-weight:500}
+.rew-item{display:flex;align-items:center;gap:8px;padding:11px 12px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;margin-bottom:6px}
+.rew-cost{font-size:12px;color:var(--pm);background:rgba(127,119,221,0.13);padding:3px 10px;border-radius:20px;flex-shrink:0;cursor:pointer}
+.rew-name{flex:1;font-size:14px}
+.rew-ni{flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:6px 8px;color:var(--tx);font-size:14px;outline:none;min-width:0}
+.rew-ci{width:58px;background:var(--s2);border:1px solid var(--bd);border-radius:8px;padding:6px;color:var(--p);font-size:13px;text-align:center;outline:none}
+.spend-btn{background:var(--pd);border:1px solid var(--p);color:#fff;font-size:12px;padding:6px 12px;border-radius:10px;cursor:pointer;flex-shrink:0}
+.spend-btn:disabled{opacity:.25}
+.rew-sv{background:var(--gr);border:none;border-radius:8px;color:#fff;font-size:13px;padding:6px 10px;cursor:pointer}
+.add-rew-row{display:flex;gap:6px;margin-top:9px;background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:9px 10px}
+/* STATS */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}
+.stat-card{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:13px}
+.stat-lbl{font-size:11px;color:var(--tm);margin-bottom:3px}
+.stat-val{font-size:22px;font-weight:600}
+.stat-val.pu{color:var(--p)}.stat-val.gr{color:var(--gr)}.stat-val.am{color:var(--am)}
+.stat-sub{font-size:11px;color:var(--tm);margin-top:2px}
+.prog-sec{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:13px;margin-bottom:8px}
+.prog-lbl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px}
+.prog-lbl span:last-child{color:var(--p);font-weight:500}
+.prog-bg{background:var(--s2);border-radius:20px;height:7px;overflow:hidden}
+.prog-f{height:100%;border-radius:20px;background:var(--p);transition:width .4s}
+.prog-list{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.prog-row{display:flex;align-items:center;gap:8px}
+.pr-em{font-size:12px;width:16px;text-align:center}
+.pr-nm{font-size:11px;color:var(--tm);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pr-bar{flex:2;background:var(--s2);border-radius:20px;height:5px;overflow:hidden}
+.pr-bf{height:100%;border-radius:20px;background:var(--p)}
+.pr-pc{font-size:10px;color:var(--tm);width:30px;text-align:right;flex-shrink:0}
+.hist-sec{background:var(--s1);border:1px solid var(--bd);border-radius:16px;padding:13px;margin-top:8px}
+.hist-title{font-size:12px;font-weight:500;margin-bottom:8px;color:var(--tm)}
+.hist-item{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(127,119,221,0.07);font-size:13px}
+.hist-item:last-child{border-bottom:none}
+.hist-pts{color:var(--gr);font-weight:500;font-size:12px;flex-shrink:0}
+.hist-nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hist-dt{color:var(--tm);font-size:11px;flex-shrink:0}
+/* SETTINGS */
+.set-card{background:var(--s2);border:1px solid var(--bd);border-radius:20px;padding:15px;margin-bottom:10px}
+.set-title{font-size:15px;font-weight:600;margin-bottom:10px}
+.set-note{font-size:12px;color:var(--tm);line-height:1.5}
+.set-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0}
+.set-label{font-size:14px}
+.set-sub{font-size:11px;color:var(--tm);margin-top:1px}
+.mode-btns{display:flex;gap:6px;margin-top:10px}
+.mode-btn{flex:1;padding:9px;border-radius:12px;border:1px solid var(--bd);background:var(--s1);color:var(--tm);font-size:12px;cursor:pointer;text-align:center}
+.mode-btn.act{border-color:var(--p);color:var(--pm);background:rgba(127,119,221,0.14)}
+.mode-desc{font-size:12px;color:var(--tm);margin-top:9px;padding:10px;background:var(--s1);border-radius:12px;line-height:1.5}
+.snap-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-top:1px solid var(--bd);font-size:13px}
+.snap-row button{background:rgba(127,119,221,.15);border:1px solid var(--bd);color:var(--pm);font-size:12px;padding:5px 12px;border-radius:20px;cursor:pointer}
+.imp-txt{width:100%;background:var(--s1);border:1px solid var(--bd);border-radius:12px;padding:9px 11px;color:var(--tx);font-size:12px;outline:none;resize:none;margin-top:7px}
+.ok-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:rgba(29,158,117,.18);color:var(--gr)}
+.bad-pill{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;background:rgba(239,159,39,.18);color:var(--am)}
+/* DIARY */
+.diary-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.diary-nav button{background:var(--s2);border:1px solid var(--bd);border-radius:12px;color:var(--tx);font-size:16px;padding:7px 15px;cursor:pointer}
+.diary-date{flex:1;text-align:center;font-size:14px;color:var(--pm);font-weight:500;text-transform:capitalize}
+.diary-today-btn{background:var(--s2);border:1px solid var(--bd);border-radius:12px;color:var(--tm);font-size:12px;padding:6px 12px;cursor:pointer}
+.diary-textarea{width:100%;min-height:180px;background:var(--s2);border:1px solid var(--bd);border-radius:18px;padding:14px 15px;color:var(--tx);font-size:16px;outline:none;resize:vertical;line-height:1.6;margin-bottom:6px}
+.diary-textarea::placeholder{color:var(--tm)}
+.diary-meta{font-size:11px;color:var(--tm);margin-bottom:16px;text-align:right}
+.diary-hist-title{font-size:12px;font-weight:500;color:var(--tm);margin-bottom:8px}
+.diary-entry{background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:11px 13px;margin-bottom:7px;cursor:pointer}
+.diary-entry.active{border-color:var(--p)}
+.diary-entry-date{font-size:12px;color:var(--pm);font-weight:500;margin-bottom:3px}
+.diary-entry-preview{font-size:12px;color:var(--tm);line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* TAB BAR / FAB / TOAST */
+.tabbar{position:fixed;left:12px;right:12px;bottom:calc(10px + var(--safe));max-width:406px;margin:0 auto;display:flex;padding:6px;background:rgba(24,22,40,.8);-webkit-backdrop-filter:blur(22px) saturate(160%);backdrop-filter:blur(22px) saturate(160%);border:1px solid var(--bd);border-radius:30px;z-index:100;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.tb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:24px;background:none;border:none;color:var(--tm);font-size:11px;font-weight:500;cursor:pointer;min-width:0}
+.tb svg{width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb.on{color:#fff;background:rgba(127,119,221,.26)}
+.tb.on svg{stroke:var(--pm)}
+.fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(88px + var(--safe));display:none;align-items:center;gap:8px;padding:14px 26px;border-radius:28px;background:rgba(33,30,54,.92);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px);border:1px solid rgba(127,119,221,.45);color:#fff;font-size:16px;font-weight:600;z-index:99;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.4);white-space:nowrap}
+.fab.show{display:flex}
+.fab b{font-size:22px;font-weight:400;color:var(--pm);line-height:1}
+.toast{position:fixed;bottom:calc(92px + var(--safe));left:50%;transform:translateX(-50%);background:var(--pd);color:#fff;padding:9px 18px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .22s;z-index:400;white-space:nowrap;border:1px solid var(--p);max-width:92vw;overflow:hidden;text-overflow:ellipsis}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion:no-preference){.gd.t{animation:pl 2.2s ease-in-out infinite}@keyframes pl{50%{box-shadow:0 0 0 4px rgba(175,169,236,.2),0 0 14px var(--p)}}}
+</style>
+</head>
+<body>
+
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+
+<div class="drawer" id="drawer">
+  <div class="drawer-hdr">
+    <div class="drawer-title">Game of Life v5</div>
+    <div class="drawer-user">🎮 Мои разделы</div>
+    <div class="drawer-sub" id="drawer-sub"></div>
+  </div>
+  <div class="drawer-sections">
+    <div class="drawer-section-title">Геймификация</div>
+    <div class="drawer-item" onclick="goSection('missions')"><span class="di-icon">🚀</span><span class="di-label">Миссии</span></div>
+    <div class="drawer-item" onclick="goSection('rewards')"><span class="di-icon">🎁</span><span class="di-label">Награды</span></div>
+    <div class="drawer-item" onclick="goSection('habits')"><span class="di-icon">🔥</span><span class="di-label">Стрики</span></div>
+    <div class="drawer-item" onclick="goSection('stats')"><span class="di-icon">📊</span><span class="di-label">Прогресс</span></div>
+    <div class="drawer-section-title">Планирование</div>
+    <div class="drawer-item" onclick="goSection('goals')"><span class="di-icon">🎯</span><span class="di-label">Цели и планы</span></div>
+    <div class="drawer-item" onclick="goSection('today')"><span class="di-icon">📅</span><span class="di-label">День</span></div>
+    <div class="drawer-item" onclick="goSection('week')"><span class="di-icon">📌</span><span class="di-label">Неделя</span></div>
+    <div class="drawer-item" onclick="goSection('inbox')"><span class="di-icon">📥</span><span class="di-label">Входящие (GTD)</span></div>
+    <div class="drawer-item" onclick="goSection('diary')"><span class="di-icon">📔</span><span class="di-label">Дневник</span></div>
+    <div class="drawer-section-title">Финансы</div>
+    <div class="drawer-item" onclick="goSection('finance')"><span class="di-icon">💰</span><span class="di-label">Доходы и расходы</span></div>
+    <div class="drawer-item" onclick="goSection('paycal')"><span class="di-icon">🗓️</span><span class="di-label">Платёжный календарь</span></div>
+    <div class="drawer-item" onclick="goSection('finplan')"><span class="di-icon">🧮</span><span class="di-label">Финансовый планер</span></div>
+  </div>
+  <div class="drawer-footer">
+    <div class="drawer-footer-btn" onclick="goSection('settings')"><span style="font-size:16px">💾</span> Данные и настройки</div>
+    <div class="drawer-footer-btn" onclick="reqNotif()"><span style="font-size:16px" id="drawer-notif-icon">🔔</span> Уведомления</div>
+  </div>
+</div>
+
+<div class="app" id="app-main">
+  <div class="hdr">
+    <div>
+      <h1 id="section-title">Миссии</h1>
+      <div class="hdr-sub" id="hdr-sub"></div>
+    </div>
+    <div class="hdr-btns">
+      <button class="icon-btn" onclick="goSection('inbox')" aria-label="Входящие">📥</button>
+      <button class="icon-btn" id="notif-btn" onclick="reqNotif()" aria-label="Уведомления">🔔</button>
+    </div>
+  </div>
+
+  <div class="bk-banner hidden" id="bk-banner">
+    <span class="bk-txt" id="bk-txt"></span>
+    <button class="bk-btn" onclick="exportBackup()">Сохранить</button>
+    <span class="bk-x" onclick="dismissBanner()">×</span>
+  </div>
+
+  <div id="gam-top">
+    <div class="bal-card">
+      <div class="bal-row">
+        <div class="bal-left">
+          <div class="lbl">Баланс</div>
+          <div class="bal-val" id="bal-val" onclick="toggleBalEdit()">0 В</div>
+          <div class="bal-mode-badge mode-normal" id="bal-mode">Обычный режим</div>
+        </div>
+        <div class="bal-right">
+          <div class="streak-badge"><strong id="gs-num">0</strong><span style="font-size:20px">🔥</span></div>
+          <div class="streak-lbl">дней стрика</div>
+          <div class="lvl-badge" onclick="goSection('stats')" id="lvl-badge">🌱 Новичок</div>
+        </div>
+      </div>
+      <div class="bal-edit-row" id="bal-edit-row">
+        <input class="bal-inp" id="bal-in" type="number"/>
+        <button class="sm-btn" style="background:var(--pd)" onclick="saveBal()">Сохранить</button>
+        <button class="sm-btn" style="background:var(--s1);color:var(--tm);border:1px solid var(--bd)" onclick="toggleBalEdit()">✕</button>
+      </div>
+      <div class="bal-meta">
+        <span>Заработано: <strong id="m-earn">0</strong> В</span>
+        <span>Потрачено: <strong id="m-spent">0</strong> В</span>
+        <span>Задач: <strong id="m-done">0</strong></span>
+      </div>
+    </div>
+    <div class="lvl-wrap">
+      <div class="lvl-hdr"><span id="lvl-from">🌱 Новичок</span><b id="lvl-pct">0%</b></div>
+      <div class="lvl-bg"><div class="lvl-fill" id="lvl-fill" style="width:0%"></div></div>
+      <div class="lvl-sub" id="lvl-sub"></div>
+    </div>
+  </div>
+
+  <div class="undo-bar hidden" id="undo-bar">
+    <span class="undo-txt" id="undo-txt"></span>
+    <button class="undo-btn" onclick="undo()">↩ Отменить</button>
+  </div>
+
+  <!-- MISSIONS -->
+  <div id="sec-missions">
+    <div class="search-row">
+      <input class="s-inp" id="search-in" placeholder="🔍 Поиск..." oninput="renderSecs()"/>
+      <select class="sort-sel" id="sort-sel" onchange="renderSecs()">
+        <option value="def">Порядок</option><option value="pd">Баллы ↓</option>
+        <option value="pa">Баллы ↑</option><option value="st">Статус</option><option value="nm">А–Я</option>
+      </select>
+    </div>
+    <div class="chips" id="chips-row"></div>
+    <div id="secs-c"></div>
+    <div class="ns-row">
+      <input class="ns-inp" id="ns-nm" placeholder="Новый уровень миссий..."/>
+      <input class="p-inp" id="ns-rng" placeholder="В"/>
+      <button class="ns-btn" onclick="addSec()">+ Уровень</button>
+    </div>
+  </div>
+
+  <!-- GOALS -->
+  <div id="sec-goals" style="display:none">
+    <button class="g-new-btn" id="g-new-btn" onclick="toggleGForm()">＋ Новая цель или план</button>
+    <div class="g-add" id="g-add">
+      <div class="seg">
+        <button id="gk-goal" class="on" onclick="setGK('goal')">🎯 Цель</button>
+        <button id="gk-plan" onclick="setGK('plan')">📌 План</button>
+      </div>
+      <div class="h-add-row">
+        <input class="h-em-inp" id="g-em" placeholder="🎯" maxlength="2"/>
+        <input class="a-inp" id="g-nm" placeholder="Что хочу сделать..." onkeydown="if(event.key==='Enter')addGoal()"/>
+      </div>
+      <div class="g-dates">
+        <label>Начало<input type="date" id="g-start"/></label>
+        <label>Дедлайн<input type="date" id="g-due"/></label>
+      </div>
+      <div class="g-presets">
+        <span class="chip" onclick="gPreset(7)">+7 дн</span>
+        <span class="chip" onclick="gPreset(14)">+14 дн</span>
+        <span class="chip" onclick="gPreset(30)">+30 дн</span>
+        <span class="chip" onclick="gPreset(90)">+90 дн</span>
+        <span class="chip" onclick="gPreset(365)">+1 год</span>
+      </div>
+      <div class="h-add-row">
+        <input class="p-inp" id="g-pts" type="number" placeholder="В" style="width:60px"/>
+        <span style="font-size:11px;color:var(--tm);flex:1">баллов за выполнение</span>
+        <button class="btn-main" onclick="addGoal()">Добавить</button>
+      </div>
+    </div>
+    <div class="chips" id="goal-chips"></div>
+    <div id="goals-list"></div>
+  </div>
+
+  <!-- INBOX -->
+  <div id="sec-inbox" style="display:none">
+    <div class="inbox-card">
+      <div class="inbox-hdr">
+        <span class="inbox-title">📥 Входящие</span>
+        <span class="inbox-cnt" id="inbox-cnt">0</span>
+      </div>
+      <div style="font-size:12px;color:var(--tm);margin-bottom:10px;line-height:1.5">Запиши всё, что в голове, — разберёшь потом. <b style="color:var(--p)">Сначала захвати, потом организуй.</b></div>
+      <div class="inbox-add">
+        <input class="a-inp" id="inbox-in" placeholder="Мысль, задача, идея..." onkeydown="if(event.key==='Enter')addInbox()"/>
+        <button class="a-btn" onclick="addInbox()">+</button>
+      </div>
+      <div id="inbox-list"></div>
+    </div>
+  </div>
+
+  <!-- DIARY -->
+  <div id="sec-diary" style="display:none">
+    <div class="diary-nav">
+      <button onclick="diaryPrevDay()">‹</button>
+      <div class="diary-date" id="diary-date-lbl"></div>
+      <button onclick="diaryNextDay()">›</button>
+    </div>
+    <textarea class="diary-textarea" id="diary-text" placeholder="Как прошёл день? Итоги, мысли, выводы..." oninput="diarySave()"></textarea>
+    <div class="diary-meta"><span class="diary-today-btn" onclick="diaryGoDate(todayStr())">Сегодня</span></div>
+    <div class="diary-hist-title">Записи</div>
+    <div id="diary-list"></div>
+  </div>
+
+  <!-- TODAY -->
+  <div id="sec-today" style="display:none">
+    <div class="plan-hdr">📅 <b id="plan-dt-lbl"></b></div>
+    <div class="plan-add">
+      <input class="a-inp" id="plan-in" placeholder="Задача на сегодня..." onkeydown="if(event.key==='Enter')addPlan()"/>
+      <input class="p-inp" id="plan-pts" type="number" placeholder="В"/>
+      <button class="a-btn" onclick="addPlan()">+</button>
+    </div>
+    <div class="plan-list" id="plan-list"></div>
+    <div class="dl-box" id="plan-deadlines"></div>
+  </div>
+
+  <!-- HABITS -->
+  <div id="sec-habits" style="display:none">
+    <div id="habits-list"></div>
+    <div class="h-add">
+      <div class="h-add-row">
+        <input class="h-em-inp" id="h-em" placeholder="🚿" maxlength="2"/>
+        <input class="a-inp" id="h-nm" placeholder="Привычка..." onkeydown="if(event.key==='Enter')addHabit()"/>
+        <input class="p-inp" id="h-pts" type="number" placeholder="В"/>
+        <button class="a-btn" onclick="addHabit()">+</button>
+      </div>
+      <div class="h-note">Баллы каждый день при отметке. Слева — сегодня, дальше прошлые дни.</div>
+    </div>
+  </div>
+
+  <!-- WEEK -->
+  <div id="sec-week" style="display:none">
+    <div class="wk-card">
+      <div class="wk-hdr"><span class="wk-title">🎯 Цели на неделю</span><span class="wk-bonus" id="wk-bonus"></span></div>
+      <div class="wk-list" id="wk-list"></div>
+      <div class="wk-add">
+        <input class="a-inp" id="wg-nm" placeholder="Цель..." onkeydown="if(event.key==='Enter')addWG()"/>
+        <input class="p-inp" id="wg-pts" type="number" placeholder="В"/>
+        <button class="a-btn" onclick="addWG()">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINANCE -->
+  <div id="sec-finance" style="display:none">
+    <div class="today-card" onclick="setBudget()">
+      <div class="tc-lbl" id="tc-lbl">Бюджет на месяц</div>
+      <div class="tc-big" id="tc-big">—</div>
+      <div id="tc-mid">
+        <div class="tc-row"><span>Сегодня</span><span id="tc-today"></span></div>
+        <div class="tc-bar"><i id="tc-fill"></i></div>
+      </div>
+      <div class="tc-hint" id="tc-hint"></div>
+    </div>
+    <button class="q-open" onclick="openQuick()"><b>＋</b> Кофе 420</button>
+    <div class="fin-summary">
+      <div class="fin-card"><div class="fin-lbl">Доходы</div><div class="fin-val inc" id="fin-inc">0 ₽</div></div>
+      <div class="fin-card"><div class="fin-lbl">Расходы</div><div class="fin-val exp" id="fin-exp">0 ₽</div></div>
+      <div class="fin-card"><div class="fin-lbl">Итог</div><div class="fin-val b2" id="fin-bal">0 ₽</div></div>
+    </div>
+    <div class="fin-chart" id="fin-cat-chart"></div>
+    <div class="fin-chart" id="fin-week-chart"></div>
+    <div id="fin-list-el"></div>
+  </div>
+
+  <!-- PAYCAL -->
+  <div id="sec-paycal" style="display:none">
+    <div class="pay-cal-card">
+      <div class="pay-cal-hdr">
+        <span class="pay-cal-title">🗓 Платёжный календарь</span>
+        <div class="pay-cal-nav">
+          <button onclick="payCalPrev()">‹</button>
+          <span class="pay-cal-month" id="pay-cal-month"></span>
+          <button onclick="payCalNext()">›</button>
+        </div>
+      </div>
+      <div class="pay-cal-grid" id="pay-cal-grid"></div>
+      <div class="pay-list" id="pay-list"></div>
+      <div class="pay-add-row">
+        <input class="a-inp" id="pay-nm" placeholder="Платёж (Аренда, Кредит...)" style="flex:2"/>
+        <input class="p-inp" id="pay-amt" type="number" placeholder="₽" style="width:72px"/>
+        <input class="pay-day-inp" id="pay-day" type="number" min="1" max="31" placeholder="день"/>
+        <button class="a-btn" onclick="addPayment()">+</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- REWARDS -->
+  <div id="sec-rewards" style="display:none">
+    <div id="rew-c"></div>
+    <div class="add-rew-row">
+      <input class="a-inp" id="rn-nm" placeholder="Название награды..."/>
+      <input class="p-inp" id="rn-cost" type="number" placeholder="В"/>
+      <button class="a-btn" onclick="addRew()">+</button>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div id="sec-stats" style="display:none">
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-lbl">Баланс</div><div class="stat-val pu" id="s-bal">—</div><div class="stat-sub">текущий</div></div>
+      <div class="stat-card"><div class="stat-lbl">Выполнено</div><div class="stat-val gr" id="s-done">—</div><div class="stat-sub">задач</div></div>
+      <div class="stat-card"><div class="stat-lbl">Заработано</div><div class="stat-val pu" id="s-earn">—</div><div class="stat-sub">всего В</div></div>
+      <div class="stat-card"><div class="stat-lbl">Потрачено</div><div class="stat-val am" id="s-spent">—</div><div class="stat-sub">на награды</div></div>
+    </div>
+    <div class="prog-sec">
+      <div class="prog-lbl"><span>Прогресс миссий</span><span id="s-pct">0%</span></div>
+      <div class="prog-bg"><div class="prog-f" id="s-pbar" style="width:0%"></div></div>
+      <div class="prog-list" id="s-plist"></div>
+    </div>
+    <div class="hist-sec">
+      <div class="hist-title">История</div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="sec-settings" style="display:none">
+    <div class="set-card">
+      <div class="set-title">💾 Мои данные</div>
+      <div class="set-note">Всё хранится в браузере на этом телефоне. Если очистить данные Safari или сменить адрес страницы, данные пропадут — поэтому раз в неделю сохраняй копию в «Файлы» или iCloud.</div>
+      <div class="set-row"><div><div class="set-label">Последняя копия</div><div class="set-sub" id="bk-last">—</div></div><span id="bk-status"></span></div>
+      <button class="btn-sec" onclick="exportBackup()">📤 Сохранить копию в файл</button>
+      <button class="btn-sec" onclick="copyBackup()">📋 Скопировать копию текстом</button>
+      <button class="btn-sec" onclick="document.getElementById('imp-file').click()">📥 Восстановить из файла</button>
+      <input type="file" id="imp-file" accept=".json,application/json,text/plain" style="display:none" onchange="importFile(this)"/>
+      <textarea class="imp-txt" id="imp-txt" rows="2" placeholder="Или вставь сюда скопированную копию и нажми «Восстановить»"></textarea>
+      <button class="btn-sec" onclick="importText()">♻️ Восстановить из текста</button>
+    </div>
+    <div class="set-card">
+      <div class="set-title">🕘 Автокопии</div>
+      <div class="set-note">Приложение само делает снимок данных раз в день и хранит последние 7. Если что-то случайно удалил — верни вчерашний.</div>
+      <div id="snap-list" style="margin-top:8px"></div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">💡 Режим баллов</div>
+      <div class="set-note">Влияет на доступность наград при снижении дохода</div>
+      <div class="mode-btns">
+        <div class="mode-btn" id="mb-normal" onclick="setMode('normal')">Обычный</div>
+        <div class="mode-btn" id="mb-saving" onclick="setMode('saving')">Сберег.</div>
+        <div class="mode-btn" id="mb-crisis" onclick="setMode('crisis')">Кризис</div>
+      </div>
+      <div class="mode-desc" id="mode-desc"></div>
+    </div>
+    <div class="set-card">
+      <div class="set-title">🔔 Уведомления</div>
+      <div class="set-row">
+        <div><div class="set-label">Напоминание в 9:00</div><div class="set-sub">Ежедневно, пока приложение открыто</div></div>
+        <button class="icon-btn" id="notif-status" onclick="reqNotif()" style="background:var(--s1)">Включить</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FINPLAN -->
+  <div id="sec-finplan" style="display:none">
+    <div style="display:flex;gap:7px;align-items:center;margin-bottom:10px">
+      <select id="fp-scenario-sel" style="flex:1;background:var(--s2);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;color:var(--tx);font-size:14px;outline:none" onchange="fpSwitchScenario()"></select>
+      <button class="a-btn" onclick="fpAddScenario()" title="Новый сценарий" style="font-size:16px;padding:0 15px;height:40px">+</button>
+      <button onclick="fpDelScenario()" style="background:rgba(226,75,74,0.12);border:1px solid rgba(226,75,74,0.25);color:var(--rd);border-radius:12px;padding:0 13px;height:40px;cursor:pointer;font-size:13px">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px" id="fp-summary"></div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:18px;overflow:hidden;margin-bottom:10px">
+      <div style="background:rgba(29,158,117,0.25);padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:600;color:var(--gr)">📈 Доходы</span>
+        <span style="font-size:14px;font-weight:700;color:var(--gr)" id="fp-inc-total">0 ₽</span>
+      </div>
+      <div id="fp-inc-rows"></div>
+      <div style="padding:8px 10px;border-top:1px dashed rgba(29,158,117,0.2)">
+        <button onclick="fpAddRow('inc')" style="background:rgba(29,158,117,0.12);border:1px solid rgba(29,158,117,0.3);color:var(--gr);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;width:100%">+ Добавить доход</button>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:18px;overflow:hidden;margin-bottom:10px">
+      <div style="background:rgba(226,75,74,0.18);padding:12px 14px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:600;color:var(--rd)">📉 Расходы</span>
+        <span style="font-size:14px;font-weight:700;color:var(--rd)" id="fp-exp-total">0 ₽</span>
+      </div>
+      <div id="fp-exp-rows"></div>
+      <div style="padding:8px 10px;border-top:1px dashed rgba(226,75,74,0.2)">
+        <button onclick="fpAddRow('exp')" style="background:rgba(226,75,74,0.1);border:1px solid rgba(226,75,74,0.25);color:var(--rd);border-radius:10px;padding:9px 14px;cursor:pointer;font-size:13px;width:100%">+ Добавить расход</button>
+      </div>
+    </div>
+    <div style="background:var(--s2);border:1px solid var(--bd);border-radius:16px;padding:12px 14px">
+      <div style="font-size:11px;color:var(--tm);margin-bottom:6px">Комментарий</div>
+      <textarea id="fp-comment" rows="3" style="width:100%;background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:8px 11px;color:var(--tx);font-size:14px;outline:none;resize:none;line-height:1.5" placeholder="Заметки к сценарию..." oninput="fpSaveComment()"></textarea>
+    </div>
+  </div>
+</div>
+
+<!-- FAB + TAB BAR -->
+<button class="fab" id="fab" onclick="openQuick()"><b>＋</b> Записать операцию</button>
+
+<nav class="tabbar" id="tabbar">
+  <button class="tb" data-tab="missions" onclick="goSection('missions')"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 4h11l-2 4 2 4H5"/></svg>Миссии</button>
+  <button class="tb" data-tab="today" onclick="goSection('today')"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="4"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>День</button>
+  <button class="tb" data-tab="goals" onclick="goSection('goals')"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/></svg>Цели</button>
+  <button class="tb" data-tab="finance" onclick="goSection('finance')"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="4"/><path d="M3 10h18"/><circle cx="16.5" cy="15" r="1" fill="currentColor"/></svg>Деньги</button>
+  <button class="tb" data-tab="more" onclick="openDrawer()"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg>Ещё</button>
+</nav>
+
+<!-- QUICK ADD SHEET -->
+<div class="q-back" id="q-back" onclick="closeQuick()"></div>
+<div class="q-sheet" id="q-sheet">
+  <div class="q-line">
+    <input class="q-in" id="q-in" placeholder="Кофе 420" autocomplete="off" autocorrect="off" enterkeyhint="done" oninput="qUpdate()" onkeydown="if(event.key==='Enter'){event.preventDefault();qSubmit();}"/>
+    <button class="q-go" id="q-go" onclick="qSubmit()" aria-label="Записать">✓</button>
+  </div>
+  <div class="q-recent" id="q-recent"></div>
+  <div class="q-opts">
+    <button class="qopt" id="q-type" onclick="qToggleType()">− Расход</button>
+    <select class="qopt" id="q-cat" onchange="qCatChange()"></select>
+    <button class="qopt" id="q-day" onclick="qToggleDay()">Сегодня</button>
+  </div>
+  <div class="q-prev" id="q-prev">Название и сумма: «Кофе 420», «+Зарплата 5к»</div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+// ══════════ CONSTANTS ══════════
+const EMOJIS=['🏆','🔥','📈','⚡','🍵','🌱'];
+const TGLABELS={urgent:'Срочно',repeat:'Повтор',long:'Долгая',easy:'Лёгкая'};
+const TGCLS={urgent:'tg-u',repeat:'tg-r',long:'tg-l',easy:'tg-e'};
+const RTIERS=[{n:'A++ (10 000 В)',min:10000},{n:'A+ (5000 В)',min:5000},{n:'A (1000–3000 В)',min:1000},{n:'B+ (300–500 В)',min:300},{n:'B (60–200 В)',min:60},{n:'C+ (30–50 В)',min:30},{n:'C (≤20 В)',min:0}];
+const LEVELS=[{pts:0,l:'🌱 Новичок'},{pts:50,l:'⚡ Боец'},{pts:150,l:'🔥 Воин'},{pts:500,l:'📈 Эксперт'},{pts:1500,l:'🏆 Мастер'},{pts:5000,l:'💎 Легенда'},{pts:15000,l:'🚀 Бог'}];
+const MODE_INFO={normal:{label:'Обычный режим',cls:'mode-normal',desc:'Все награды доступны.'},saving:{label:'Сберегательный',cls:'mode-saving',desc:'Награды >200В заблокированы. Включай, когда доходы просели.'},crisis:{label:'Кризисный',cls:'mode-crisis',desc:'Все награды заморожены. Только накопление. Выходи быстрее.'}};
+const FIN_COLORS={Работа:'#1D9E75',Фриланс:'#7F77DD',Маркетплейсы:'#378ADD',Другое:'#9990cc',Еда:'#EF9F27',Транспорт:'#378ADD',Долги:'#E24B4A',Развлечения:'#AFA9EC',Здоровье:'#5DCAA5',Одежда:'#F09995',Жильё:'#BA7517',Инвестиции:'#639922'};
+const FIN_CATS=['Еда','Транспорт','Развлечения','Здоровье','Одежда','Жильё','Долги','Инвестиции','Работа','Фриланс','Маркетплейсы','Другое'];
+const SECTION_TITLES={missions:'Миссии',goals:'Цели и планы',diary:'Дневник',inbox:'Входящие',today:'День',habits:'Стрики',week:'Неделя',finance:'Деньги',paycal:'Платежи',finplan:'Планер',rewards:'Награды',stats:'Прогресс',settings:'Данные'};
+const ALL_SECS=['missions','goals','diary','inbox','today','habits','week','finance','paycal','finplan','rewards','stats','settings'];
+const GAM_SECS=['missions','today','habits','week','rewards','stats','inbox','goals'];
+const FAB_SECS=['today','finance','paycal'];
+
+// ══════════ HELPERS ══════════
+const $=id=>document.getElementById(id);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const pad=n=>String(n).padStart(2,'0');
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function todayStr(){return ymd(new Date());}
+function parseD(s){const p=String(s).split('-').map(Number);return new Date(p[0],(p[1]||1)-1,p[2]||1);}
+function addDays(s,n){const d=parseD(s);d.setDate(d.getDate()+n);return ymd(d);}
+function diffDays(a,b){return Math.round((parseD(b)-parseD(a))/86400000);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function fmtAmt(n){return (Math.round(n*100)/100).toLocaleString('ru')+'\u00A0₽';}
+function fmtDate(s){if(!s)return'';return parseD(s).toLocaleDateString('ru',{day:'numeric',month:'short'});}
+function pl(n,f){n=Math.abs(n);const a=n%10,b=n%100;return f[(a===1&&b!==11)?0:(a>=2&&a<=4&&(b<10||b>=20))?1:2];}
+const DAYW=['день','дня','дней'];
+
+// ══════════ DEFAULT STATE ══════════
+const DS={
+  balance:144,earned:271,spent:2,nextId:700,
+  actDays:['2026-04-19','2026-04-20','2026-04-21'],
+  mode:'saving',
+  sections:[
+    {id:1,emoji:'🏆',name:'Миссии A+ (5000 В)',open:true,pin:false,tasks:[
+      {id:1,name:'Полностью закрыть все долги',pts:5000,done:false,tag:'',pin:false}
+    ]},
+    {id:2,emoji:'🔥',name:'Миссии A (1000–3000 В)',open:true,pin:false,tasks:[
+      {id:2,name:'Закрыть Тинькофф',pts:2000,done:false,tag:'',pin:false},
+      {id:3,name:'Продать бизнес с Митей → выхлоп 200–300к',pts:2000,done:false,tag:'',pin:false},
+      {id:4,name:'Закрыть Сбербанк',pts:1500,done:false,tag:'',pin:false}
+    ]},
+    {id:3,emoji:'📈',name:'Миссии B+ (300–500 В)',open:true,pin:false,tasks:[
+      {id:5,name:'Закрыть Никиту',pts:500,done:false,tag:'urgent',pin:false},
+      {id:6,name:'Закрыть Альфу',pts:300,done:false,tag:'',pin:false},
+      {id:7,name:'Найти постоянного клиента на 30к/мес',pts:300,done:false,tag:'',pin:false}
+    ]},
+    {id:4,emoji:'⚡',name:'Миссии B (100–200 В)',open:false,pin:false,tasks:[
+      {id:8,name:'Закрыть Митя + Коля',pts:200,done:false,tag:'',pin:false},
+      {id:9,name:'Закрыть ВТБ',pts:150,done:false,tag:'',pin:false},
+      {id:10,name:'Создать сайт и тг',pts:150,done:false,tag:'',pin:false},
+      {id:11,name:'Закрыть кубышку',pts:100,done:false,tag:'',pin:false},
+      {id:12,name:'Закрыть платёж по квартире',pts:100,done:false,tag:'repeat',pin:false},
+      {id:13,name:'Заработать 30к за 3–4 смены',pts:100,done:false,tag:'',pin:false}
+    ]},
+    {id:5,emoji:'🍵',name:'Миссии C+ (30–50 В)',open:false,pin:false,tasks:[
+      {id:14,name:'Провести первого клиента на 10к+',pts:50,done:false,tag:'',pin:false},
+      {id:15,name:'Отложить на учёбу 12к',pts:50,done:false,tag:'',pin:false},
+      {id:16,name:'Заработать 25к за 3 смены',pts:50,done:false,tag:'',pin:false},
+      {id:17,name:'Свидание 10–15к',pts:50,done:false,tag:'',pin:false},
+      {id:18,name:'Купить абонемент в зал',pts:40,done:true,tag:'',pin:false},
+      {id:19,name:'Заплатить проценты Тинькофф',pts:30,done:true,tag:'repeat',pin:false},
+      {id:20,name:'Записаться к Лору',pts:30,done:true,tag:'urgent',pin:false},
+      {id:21,name:'Свидание 5к',pts:30,done:true,tag:'',pin:false}
+    ]},
+    {id:6,emoji:'🌱',name:'Миссии C (5–20 В)',open:false,pin:false,tasks:[
+      {id:22,name:'Сводить Соню по врачам',pts:20,done:true,tag:'',pin:false},
+      {id:23,name:'Записаться к неврологу',pts:20,done:false,tag:'',pin:false},
+      {id:24,name:'УЗИ ОБП',pts:15,done:false,tag:'',pin:false},
+      {id:25,name:'Сходить к урологу',pts:15,done:false,tag:'',pin:false},
+      {id:26,name:'Проверить ТТГ',pts:15,done:false,tag:'',pin:false},
+      {id:27,name:'Сделать УЗИ почек',pts:15,done:false,tag:'',pin:false},
+      {id:28,name:'ЭНМГ',pts:15,done:false,tag:'',pin:false},
+      {id:29,name:'Заплатить проценты Никита',pts:15,done:false,tag:'repeat',pin:false},
+      {id:30,name:'Уделить час нейросетям',pts:15,done:true,tag:'repeat',pin:false},
+      {id:31,name:'Заплатить проценты Сбер',pts:10,done:true,tag:'repeat',pin:false},
+      {id:32,name:'Прочитать 30 страниц «Делай просто»',pts:10,done:true,tag:'easy',pin:false},
+      {id:33,name:'Сделать 15х30*3 за день',pts:10,done:false,tag:'repeat',pin:false},
+      {id:34,name:'Прочесть 30 стр. по маркетингу',pts:10,done:false,tag:'long',pin:false},
+      {id:35,name:'Заплатить коммуналку',pts:5,done:true,tag:'repeat',pin:false}
+    ]}
+  ],
+  rewards:[
+    {id:101,name:'Покупка машины',cost:10000},{id:102,name:'Поездка на отдых с девушкой',cost:5000},
+    {id:103,name:'Личные покупки 10–20к',cost:1000},{id:104,name:'Нож-бабочка 30к',cost:3000},
+    {id:105,name:'Купить скинов на 20к',cost:2000},{id:106,name:'Сумка Chingate',cost:300},
+    {id:107,name:'Одежда срочная до 5к',cost:100},{id:108,name:'Футболка дороже 2к',cost:100},
+    {id:109,name:'Одежда до 3к',cost:80},{id:110,name:'Новая сумка',cost:65},
+    {id:111,name:'5 часов CS',cost:60},{id:112,name:'Футболка до 1000',cost:50},
+    {id:113,name:'Чайник проливной',cost:30},{id:114,name:'Переходник для Mac',cost:30},
+    {id:115,name:'Пиалы для чая',cost:20},{id:116,name:'Китайский чай',cost:15}
+  ],
+  weekGoals:[
+    {id:501,name:'Разобраться во фрилансе и полностью подготовить профиль и коворки',pts:50,done:false},
+    {id:502,name:'Скопировать профиль с коворка в Авито',pts:10,done:false},
+    {id:503,name:'Создать план продвижения на коворке',pts:30,done:false}
+  ],
+  habits:[
+    {id:401,emoji:'📖',name:'Чтение',pts:5,doneDate:'',streak:0,history:[]},
+    {id:402,emoji:'💧',name:'2.5л воды',pts:5,doneDate:'2026-04-21',streak:1,history:['2026-04-21']},
+    {id:403,emoji:'🦫',name:'Без прокрастинации',pts:3,doneDate:'',streak:0,history:[]},
+    {id:404,emoji:'🤖',name:'Уделить час AI',pts:10,doneDate:'2026-04-19',streak:1,history:['2026-04-19']}
+  ],
+  planner:[],
+  history:[
+    {tid:35,name:'Заплатить коммуналку',pts:5,date:'2026-04-19'},{tid:31,name:'Заплатить проценты Сбер',pts:10,date:'2026-04-19'},
+    {tid:30,name:'Уделить час нейросетям',pts:15,date:'2026-04-19'},{tid:22,name:'Сводить Соню по врачам',pts:20,date:'2026-04-19'},
+    {tid:19,name:'Заплатить проценты Тинькофф',pts:30,date:'2026-04-19'},{tid:18,name:'Купить абонемент в зал',pts:40,date:'2026-04-19'},
+    {tid:21,name:'Свидание 5к',pts:30,date:'2026-04-19'},{tid:20,name:'Записаться к Лору',pts:30,date:'2026-04-19'}
+  ],
+  finance:[
+    {id:560,type:'inc',name:'Смены',amt:6200,cat:'Работа',date:'2026-04-20'},
+    {id:561,type:'inc',name:'Работа',amt:5000,cat:'Работа',date:'2026-04-20'},
+    {id:562,type:'exp',name:'Рестораны',amt:4500,cat:'Развлечения',date:'2026-04-20'},
+    {id:563,type:'exp',name:'Такси',amt:450,cat:'Транспорт',date:'2026-04-20'},
+    {id:564,type:'exp',name:'Шаурма',amt:400,cat:'Еда',date:'2026-04-20'},
+    {id:565,type:'exp',name:'Шоколадки и чипсы',amt:450,cat:'Другое',date:'2026-04-20'},
+    {id:566,type:'exp',name:'Пиво',amt:340,cat:'Другое',date:'2026-04-20'},
+    {id:551,type:'inc',name:'Баланс',amt:700,cat:'Работа',date:'2026-04-19'},
+    {id:552,type:'exp',name:'Такси',amt:310,cat:'Транспорт',date:'2026-04-19'},
+    {id:553,type:'exp',name:'Стики айкос',amt:250,cat:'Другое',date:'2026-04-19'},
+    {id:554,type:'exp',name:'Завтрак',amt:100,cat:'Еда',date:'2026-04-19'}
+  ],
+  inbox:[],diary:{},goals:[],budget:{limit:0},catMem:{},lastBackup:'',
+  payments:[
+    {id:601,name:'Аренда',amt:30000,day:25,paid:[]},{id:602,name:'Штраф',amt:5000,day:25,paid:[]},
+    {id:603,name:'Коммуналка',amt:3000,day:25,paid:[]},{id:604,name:'Интернет',amt:1000,day:25,paid:[]}
+  ],
+  finPlans:[],
+  fpScenarios:[
+    {id:9000,name:'Сценарий 1',comment:'',rows:[
+      {id:9001,type:'inc',name:'LD Latte',amt:60000,note:'Оклад'},{id:9002,type:'inc',name:'Паша',amt:34000,note:''},
+      {id:9003,type:'inc',name:'LD latte',amt:40000,note:'KPI'},{id:9004,type:'exp',name:'Квартира',amt:34000,note:'20'},
+      {id:9005,type:'exp',name:'Платеж Тиньк',amt:4000,note:'1'},{id:9006,type:'exp',name:'Телефон',amt:300,note:'25'},
+      {id:9007,type:'exp',name:'T pro',amt:300,note:'27'},{id:9008,type:'exp',name:'Платеж Сбер',amt:3000,note:'1'},
+      {id:9009,type:'exp',name:'Зал',amt:3600,note:'15'},{id:9010,type:'exp',name:'Компы',amt:4000,note:'7*1500'},
+      {id:9011,type:'exp',name:'Свидания',amt:14000,note:'Рестики и с'},{id:9012,type:'exp',name:'Логистика',amt:8000,note:''},
+      {id:9013,type:'exp',name:'Прочее',amt:10000,note:''},{id:9014,type:'exp',name:'Еда',amt:20000,note:''},
+      {id:9015,type:'exp',name:'А деньги',amt:13000,note:''},{id:9016,type:'exp',name:'На отдых отложить',amt:20000,note:''}
+    ]},
+    {id:9020,name:'Июль',comment:'',rows:[
+      {id:9021,type:'inc',name:'Сейчас',amt:5400,note:'15'},{id:9022,type:'inc',name:'Кпи LD',amt:21200,note:'15'},
+      {id:9023,type:'inc',name:'Кпи Озон',amt:5000,note:'15'},{id:9024,type:'inc',name:'Оклад LD',amt:21200,note:'15'},
+      {id:9025,type:'inc',name:'Оклад Озон',amt:15000,note:'15'},{id:9026,type:'inc',name:'MDT',amt:21000,note:''},
+      {id:9027,type:'inc',name:'Оклад LD',amt:21200,note:'25'},{id:9028,type:'exp',name:'На отдых',amt:15000,note:'До 20'},
+      {id:9029,type:'exp',name:'Квартира',amt:30000,note:'До 20'},{id:9030,type:'exp',name:'Юбилей',amt:3000,note:'18'},
+      {id:9031,type:'exp',name:'На отдых',amt:21000,note:''}
+    ]}
+  ],
+  fpActive:1
+};
+
+// ══════════ STORAGE (данные не теряются) ══════════
+// Ключ НЕ менять: под ним лежат твои данные.
+const _STORE_KEY='gol_v5_0421';
+const SNAP_PREFIX='gol_snap_';
+let st=null,lastAction=null,undoTimer=null,activeFilter='all',currentSec='missions',editRewId=null,saveWarned=false,bannerDismissed=false;
+const repl=(k,v)=>(k&&k[0]==='_')?undefined:v;
+
+function save(){
+  try{localStorage.setItem(_STORE_KEY,JSON.stringify(st,repl));}
+  catch(e){if(!saveWarned){saveWarned=true;toast('⚠️ Не удалось сохранить. Сделай копию в «Данные»');}}
+}
+function snapKeys(){
+  const a=[];
+  for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&/^gol_snap_\d{4}-\d\d-\d\d$/.test(k))a.push(k);}
+  return a.sort().reverse();
+}
+function dailySnapshot(){
+  try{
+    const k=SNAP_PREFIX+todayStr();
+    if(!localStorage.getItem(k))localStorage.setItem(k,JSON.stringify(st,repl));
+    snapKeys().slice(7).forEach(x=>localStorage.removeItem(x));
+  }catch(e){}
+}
+function ensureDefaults(){
+  ['sections','rewards','habits','planner','history','finance','weekGoals','actDays','inbox','payments','goals','finPlans','fpScenarios'].forEach(k=>{
+    if(!Array.isArray(st[k]))st[k]=DS[k]===undefined?[]:clone(DS[k]);
+  });
+  ['balance','earned','spent'].forEach(k=>{if(typeof st[k]!=='number'||isNaN(st[k]))st[k]=DS[k];});
+  if(!st.mode)st.mode='normal';
+  if(!st.diary||typeof st.diary!=='object')st.diary={};
+  if(!st.budget||typeof st.budget!=='object')st.budget={limit:0};
+  if(!st.catMem||typeof st.catMem!=='object')st.catMem={};
+  if(typeof st.lastBackup!=='string')st.lastBackup='';
+  if(st.fpActive===undefined)st.fpActive=DS.fpActive;
+  let mx=st.nextId||700;
+  const scan=a=>(a||[]).forEach(o=>{if(o&&typeof o.id==='number'&&o.id>=mx&&o.id<9000)mx=o.id+1;});
+  ['rewards','habits','planner','finance','weekGoals','inbox','payments','goals'].forEach(k=>scan(st[k]));
+  st.sections.forEach(s=>{scan([s]);scan(s.tasks);});
+  st.nextId=mx;
+}
+(function init(){
+  try{const s=localStorage.getItem(_STORE_KEY);if(s)st=JSON.parse(s);}catch(e){st=null;}
+  if(!st||typeof st!=='object'){
+    st=null;
+    try{ // поиск данных в старых версиях приложения
+      const ks=[];for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&/^gol_v\d/.test(k)&&k!==_STORE_KEY)ks.push(k);}
+      ks.sort().reverse();
+      for(const k of ks){const o=JSON.parse(localStorage.getItem(k));if(o&&Array.isArray(o.sections)){st=o;break;}}
+    }catch(e){}
+  }
+  if(!st)st=clone(DS);
+  ensureDefaults();
+  dailySnapshot();
+  save();
+  try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+})();
+window.addEventListener('pagehide',save);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)save();});
+
+// ── backup / restore ──
+function markBackup(){st.lastBackup=todayStr();save();updateBanner();if(currentSec==='settings')renderSettings();}
+async function exportBackup(){
+  const data=JSON.stringify(st,repl);
+  const name='game-of-life-'+todayStr()+'.json';
+  let file=null;
+  try{file=new File([data],name,{type:'application/json'});}catch(e){}
+  try{
+    if(file&&navigator.canShare&&navigator.canShare({files:[file]})){
+      await navigator.share({files:[file],title:name});markBackup();toast('✅ Копия сохранена');return;
+    }
+  }catch(e){if(e&&e.name==='AbortError')return;}
+  try{
+    const blob=new Blob([data],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+    document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1500);
+    markBackup();toast('✅ Файл '+name);
+  }catch(e){copyBackup();}
+}
+function copyBackup(){
+  const data=JSON.stringify(st,repl);
+  const done=()=>{markBackup();toast('📋 Скопировано. Вставь в Заметки');};
+  if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(data).then(done).catch(()=>fallbackCopy(data,done));}
+  else fallbackCopy(data,done);
+}
+function fallbackCopy(text,cb){
+  const t=document.createElement('textarea');t.value=text;t.style.cssText='position:fixed;opacity:0;top:0';
+  document.body.appendChild(t);t.focus();t.select();
+  try{document.execCommand('copy');cb();}catch(e){toast('Не удалось скопировать');}
+  t.remove();
+}
+function importFile(inp){
+  const f=inp.files&&inp.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{applyImport(String(r.result),'файла «'+f.name+'»');inp.value='';};
+  r.readAsText(f);
+}
+function importText(){const v=$('imp-txt').value.trim();if(!v){toast('Вставь текст копии в поле выше');return;}applyImport(v,'текста');}
+function applyImport(text,label){
+  let o;
+  try{o=JSON.parse(text);}catch(e){toast('❌ Это не файл копии');return;}
+  if(!o||typeof o!=='object'||!Array.isArray(o.sections)){toast('❌ Это не копия Game of Life');return;}
+  if(!confirm('Заменить текущие данные данными из '+label+'?\nТекущие сохранятся как аварийная копия.'))return;
+  try{localStorage.setItem('gol_pre_import',JSON.stringify(st,repl));}catch(e){}
+  st=o;ensureDefaults();rolloverPlanner();save();
+  bannerDismissed=false;updateBanner();switchSection(currentSec);render();toast('✅ Данные восстановлены');
+}
+function restoreSnap(k){
+  let txt=localStorage.getItem(k);if(!txt){toast('Копия не найдена');return;}
+  applyImport(txt,k==='gol_pre_import'?'аварийной копии':'автокопии от '+fmtDate(k.replace(SNAP_PREFIX,'')));
+}
+function updateBanner(){
+  const el=$('bk-banner');if(!el)return;
+  const days=st.lastBackup?diffDays(st.lastBackup,todayStr()):999;
+  const show=days>=7&&!bannerDismissed;
+  el.classList.toggle('hidden',!show);
+  $('bk-txt').textContent=st.lastBackup?('Копию не сохраняли '+days+' '+pl(days,DAYW)+'. Сохрани, чтобы не потерять данные'):'Резервной копии ещё нет. Сохрани её, чтобы не потерять данные';
+}
+function dismissBanner(){bannerDismissed=true;updateBanner();}
+
+// ══════════ UI CORE ══════════
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2300);}
+function showUndo(msg){const b=$('undo-bar');$('undo-txt').textContent=msg;b.classList.remove('hidden');clearTimeout(undoTimer);undoTimer=setTimeout(()=>{b.classList.add('hidden');lastAction=null;},6000);}
+
+function openDrawer(){$('drawer').classList.add('open');$('drawer-overlay').classList.add('open');updateDrawerActive();}
+function closeDrawer(){$('drawer').classList.remove('open');$('drawer-overlay').classList.remove('open');}
+function updateDrawerActive(){
+  document.querySelectorAll('.drawer-item').forEach(el=>{
+    const m=(el.getAttribute('onclick')||'').match(/'(\w+)'/);
+    el.classList.toggle('active',!!m&&m[1]===currentSec);
+  });
+  $('drawer-sub').textContent=st.balance+' В · '+getCurrentLevel().l;
+}
+function goSection(sec){closeDrawer();switchSection(sec);}
+function getCurrentLevel(){const e=st.earned;for(let i=LEVELS.length-1;i>=0;i--){if(e>=LEVELS[i].pts)return LEVELS[i];}return LEVELS[0];}
+
+let tX=0,tY=0;
+document.addEventListener('touchstart',e=>{tX=e.touches[0].clientX;tY=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-tX,dy=e.changedTouches[0].clientY-tY;
+  if(Math.abs(dx)>Math.abs(dy)*1.5){
+    if(dx>60&&tX<40)openDrawer();
+    if(dx<-60&&$('drawer').classList.contains('open'))closeDrawer();
+  }
+},{passive:true});
+
+function switchSection(sec){
+  currentSec=sec;
+  ALL_SECS.forEach(s=>{const el=$('sec-'+s);if(el)el.style.display=s===sec?'':'none';});
+  $('section-title').textContent=SECTION_TITLES[sec]||sec;
+  $('hdr-sub').textContent=new Date().toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long'});
+  $('gam-top').style.display=GAM_SECS.includes(sec)?'':'none';
+  $('fab').classList.toggle('show',FAB_SECS.includes(sec));
+  const tab=['missions','today','goals','finance'].includes(sec)?sec:'more';
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('on',b.dataset.tab===tab));
+  if(sec==='missions')renderSecs();
+  if(sec==='goals')renderGoals();
+  if(sec==='diary')renderDiary();
+  if(sec==='inbox')renderInbox();
+  if(sec==='today')renderPlanner();
+  if(sec==='habits')renderHabits();
+  if(sec==='week')renderWeek();
+  if(sec==='rewards')renderRews();
+  if(sec==='finance')renderFin();
+  if(sec==='paycal')renderPayCal();
+  if(sec==='finplan')renderFinPlan();
+  if(sec==='stats')renderStats();
+  if(sec==='settings')renderSettings();
+  window.scrollTo(0,0);
+}
+
+// ══════════ UNDO ══════════
+function undo(){
+  if(!lastAction)return;
+  const{type,data}=lastAction;
+  if(type==='toggle'){
+    const sec=st.sections.find(s=>s.id===data.sid);const task=sec&&sec.tasks.find(t=>t.id===data.tid);if(!task)return;
+    if(task._rt){clearTimeout(task._rt);task._rt=null;}
+    task.done=!task.done;const d=task.done?task.pts:-task.pts;st.balance+=d;st.earned+=d;
+    st.history=st.history.filter(h=>!(h.tid===data.tid&&h.date===todayStr()));
+  }else if(type==='spend'){st.balance+=data.cost;st.spent-=data.cost;}
+  else if(type==='wg'){const wg=st.weekGoals.find(g=>g.id===data.id);if(!wg)return;wg.done=!wg.done;const d=wg.done?wg.pts:-wg.pts;st.balance+=d;st.earned+=d;}
+  else if(type==='habit'){const h=st.habits.find(h=>h.id===data.id);if(!h)return;h.doneDate='';h.streak=Math.max(0,h.streak-1);h.history=h.history.filter(d=>d!==todayStr());st.balance-=data.pts;st.earned-=data.pts;}
+  else if(type==='plan'){const p=st.planner.find(p=>p.id===data.id);if(!p)return;p.done=!p.done;const d=p.done?p.pts:-p.pts;st.balance+=d;st.earned+=d;}
+  else if(type==='goal'){const g=st.goals.find(g=>g.id===data.id);if(!g)return;applyGoalToggle(g);}
+  else if(type==='fin'){st.finance=st.finance.filter(f=>f.id!==data.id);}
+  else if(type==='finDel'){st.finance.push(data.entry);}
+  lastAction=null;$('undo-bar').classList.add('hidden');save();render();
+  if(currentSec==='goals')renderGoals();if(currentSec==='finance')renderFin();if(currentSec==='today')renderPlanner();if(currentSec==='habits')renderHabits();if(currentSec==='week')renderWeek();
+  toast('↩ Отменено');
+}
+
+// ══════════ NOTIFICATIONS ══════════
+function reqNotif(){
+  if(!('Notification' in window)){toast('Браузер не поддерживает уведомления');return;}
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){
+      toast('🔔 Включено!');
+      const now=new Date(),t=new Date();t.setHours(9,0,0,0);if(now>t)t.setDate(t.getDate()+1);
+      setTimeout(()=>{new Notification('Game of Life 🎮',{body:'Время планировать день!'});setInterval(()=>new Notification('Game of Life 🎮',{body:'Время планировать день!'}),86400000);},t-now);
+      updateNotifBtn();
+    }else toast('Разрешение не дано');
+  });
+}
+function updateNotifBtn(){
+  const ok=typeof Notification!=='undefined'&&Notification.permission==='granted';
+  ['notif-btn','notif-status','drawer-notif-icon'].forEach(id=>{const el=$(id);if(el)el.textContent=ok?'✅':(id==='notif-status'?'Включить':'🔔');});
+}
+
+// ══════════ BALANCE / MODE / LEVEL ══════════
+function toggleBalEdit(){const r=$('bal-edit-row');r.classList.toggle('show');if(r.classList.contains('show')){$('bal-in').value=st.balance;$('bal-in').focus();}}
+function saveBal(){const v=parseInt($('bal-in').value);if(isNaN(v))return;st.balance=v;$('bal-edit-row').classList.remove('show');save();render();toast('Баланс обновлён');}
+function setMode(m){st.mode=m;save();updateMode();renderRews();toast('Режим: '+MODE_INFO[m].label);}
+function updateMode(){
+  const m=st.mode,info=MODE_INFO[m];
+  const b=$('bal-mode');if(b){b.textContent=info.label;b.className='bal-mode-badge '+info.cls;}
+  ['normal','saving','crisis'].forEach(k=>{const el=$('mb-'+k);if(el)el.classList.toggle('act',k===m);});
+  const d=$('mode-desc');if(d)d.textContent=info.desc;
+}
+function updateLevel(){
+  const e=st.earned;let cur=LEVELS[0],nxt=LEVELS[1];
+  for(let i=0;i<LEVELS.length-1;i++){if(e>=LEVELS[i].pts&&e<LEVELS[i+1].pts){cur=LEVELS[i];nxt=LEVELS[i+1];break;}if(e>=LEVELS[LEVELS.length-1].pts){cur=LEVELS[LEVELS.length-1];nxt=null;break;}}
+  $('lvl-from').textContent=cur.l;$('lvl-badge').textContent=cur.l;
+  if(nxt){const pct=Math.round((e-cur.pts)/(nxt.pts-cur.pts)*100);$('lvl-pct').textContent=pct+'%';$('lvl-fill').style.width=pct+'%';$('lvl-sub').innerHTML='До <b>'+nxt.l+'</b>: '+(nxt.pts-e)+' В';}
+  else{$('lvl-pct').textContent='MAX';$('lvl-fill').style.width='100%';$('lvl-sub').textContent='🎉 Максимум!';}
+}
+function recAct(){const t=todayStr();if(!st.actDays.includes(t)){st.actDays.push(t);save();}}
+function calcStreak(){
+  const days=[...st.actDays].sort().reverse();if(!days.length)return 0;
+  let streak=0,cur=new Date();cur.setHours(0,0,0,0);
+  for(let i=0;i<days.length;i++){const d=parseD(days[i]);const diff=Math.round((cur-d)/86400000);if(diff===streak){streak++;cur=d;}else if(diff===streak+1&&i===0&&streak===0){streak++;cur=d;}else break;}
+  return streak;
+}
+
+// ══════════ MISSIONS ══════════
+function renderChips(){
+  const row=$('chips-row');if(!row)return;row.innerHTML='';
+  [{id:'all',l:'Все'},{id:'pin',l:'📌'},{id:'urgent',l:'🔴 Срочные'},{id:'repeat',l:'🔁 Повтор'},{id:'long',l:'⏳ Долгие'},{id:'easy',l:'✅ Лёгкие'},{id:'undone',l:'Не выполнено'}].forEach(f=>{
+    const c=document.createElement('div');c.className='chip'+(activeFilter===f.id?' active':'');c.textContent=f.l;c.onclick=()=>{activeFilter=f.id;renderSecs();};row.appendChild(c);
+  });
+}
+function filterTasks(tasks){
+  const q=(($('search-in')||{}).value||'').toLowerCase();
+  return tasks.filter(t=>{
+    if(q&&!t.name.toLowerCase().includes(q))return false;
+    if(activeFilter==='pin')return t.pin;if(activeFilter==='urgent')return t.tag==='urgent';
+    if(activeFilter==='repeat')return t.tag==='repeat';if(activeFilter==='long')return t.tag==='long';
+    if(activeFilter==='easy')return t.tag==='easy';if(activeFilter==='undone')return !t.done;return true;
+  });
+}
+function sortTasks(tasks){
+  const s=($('sort-sel')||{}).value||'def';const arr=[...tasks];
+  if(s==='pd')arr.sort((a,b)=>b.pts-a.pts);else if(s==='pa')arr.sort((a,b)=>a.pts-b.pts);
+  else if(s==='st')arr.sort((a,b)=>a.done-b.done);else if(s==='nm')arr.sort((a,b)=>a.name.localeCompare(b.name));
+  arr.sort((a,b)=>b.pin-a.pin);return arr;
+}
+function toggleSec(id){const s=st.sections.find(s=>s.id===id);if(s){s.open=!s.open;save();renderSecs();}}
+function pinSec(id,e){e.stopPropagation();const s=st.sections.find(s=>s.id===id);if(s){s.pin=!s.pin;save();renderSecs();}}
+function toggleTask(sid,tid){
+  const sec=st.sections.find(s=>s.id===sid);const task=sec&&sec.tasks.find(t=>t.id===tid);if(!task)return;
+  task.done=!task.done;const d=task.done?task.pts:-task.pts;st.balance+=d;st.earned+=d;
+  lastAction={type:'toggle',data:{sid,tid}};
+  const lbl=task.name.length>26?task.name.slice(0,26)+'…':task.name;
+  if(task.done){
+    toast('+'+task.pts+' В! 🎯');showUndo('Выполнено: '+lbl);recAct();
+    st.history.unshift({tid,name:task.name,pts:task.pts,date:todayStr()});
+    if(st.history.length>60)st.history=st.history.slice(0,60);
+    if(task.tag==='repeat'){task._rt=setTimeout(()=>{task.done=false;save();renderSecs();toast('🔁 Сброшена: '+task.name.slice(0,20));},2500);}
+  }else{if(task._rt){clearTimeout(task._rt);task._rt=null;}showUndo('Снято: '+lbl);st.history=st.history.filter(h=>!(h.tid===tid&&h.date===todayStr()));}
+  save();render();
+}
+function pinTask(sid,tid,e){e.stopPropagation();const sec=st.sections.find(s=>s.id===sid);const task=sec&&sec.tasks.find(t=>t.id===tid);if(task){task.pin=!task.pin;save();renderSecs();}}
+function delTask(sid,tid){const sec=st.sections.find(s=>s.id===sid);if(!sec)return;const task=sec.tasks.find(t=>t.id===tid);if(task&&task.done){st.balance-=task.pts;st.earned-=task.pts;}sec.tasks=sec.tasks.filter(t=>t.id!==tid);save();render();}
+function addTask(sid){
+  const ni=$('tn-'+sid),pi=$('tp-'+sid),ti=$('tt-'+sid);
+  const name=ni.value.trim(),pts=parseInt(pi.value)||10,tag=ti?ti.value:'';if(!name)return;
+  const sec=st.sections.find(s=>s.id===sid);sec.tasks.push({id:st.nextId++,name,pts,done:false,tag,pin:false});
+  save();renderSecs();
+}
+function addSec(){
+  const n=$('ns-nm').value.trim(),r=$('ns-rng').value.trim();if(!n)return;
+  st.sections.push({id:st.nextId++,emoji:EMOJIS[st.sections.length%EMOJIS.length],name:r?n+' ('+r+' В)':n,open:true,pin:false,tasks:[]});
+  $('ns-nm').value='';$('ns-rng').value='';save();renderSecs();
+}
+function renderSecs(){
+  renderChips();
+  const c=$('secs-c');if(!c)return;c.innerHTML='';
+  const q=(($('search-in')||{}).value||'').toLowerCase();
+  const searching=q.length>0||activeFilter!=='all';
+  const secs=[...st.sections].sort((a,b)=>b.pin-a.pin);let any=false;
+  secs.forEach(sec=>{
+    const st2=sortTasks(filterTasks(sec.tasks));
+    const done=sec.tasks.filter(t=>t.done).length,left=sec.tasks.filter(t=>!t.done).length;
+    if(searching&&st2.length===0)return;any=true;
+    const wrap=document.createElement('div');wrap.className='section';
+    const isOpen=sec.open||searching;
+    const hdr=document.createElement('div');hdr.className='sec-hdr'+(isOpen?'':' closed');
+    hdr.innerHTML=`<span class="sec-pin${sec.pin?' on':''}" onclick="pinSec(${sec.id},event)">📌</span><span class="sec-title">${esc(sec.emoji)} ${esc(sec.name)}</span><span class="sec-meta">${left>0?'<span class="sec-left">'+left+' ост.</span>':''}${done>0?'<span class="sec-done2">✓'+done+'</span>':''}<span class="sec-cnt">${sec.tasks.length}</span><span class="sec-arr ${isOpen?'o':''}">▶</span></span>`;
+    hdr.onclick=e=>{if(e.target.classList.contains('sec-pin'))return;toggleSec(sec.id);};wrap.appendChild(hdr);
+    if(isOpen){
+      const tw=document.createElement('div');tw.className='tasks-wrap';
+      st2.forEach(task=>{
+        const row=document.createElement('div');row.className='t-row'+(task.done?' done':'')+(task.pin?' pin-t':'');
+        const tg=task.tag?`<span class="tg ${TGCLS[task.tag]}">${TGLABELS[task.tag]}</span>`:'';
+        row.innerHTML=`<div class="cb${task.done?' on':''}" onclick="toggleTask(${sec.id},${task.id})"></div><span class="t-name">${esc(task.name)}</span><div class="t-tags">${tg}</div><span class="t-pts">${task.pts}В</span><div class="t-acts"><span class="t-pin${task.pin?' on':''}" onclick="pinTask(${sec.id},${task.id},event)">📌</span><button class="t-del" onclick="delTask(${sec.id},${task.id})">×</button></div>`;
+        tw.appendChild(row);
+      });
+      const ar=document.createElement('div');ar.className='add-row';
+      ar.innerHTML=`<input class="a-inp" id="tn-${sec.id}" placeholder="Новая задача..." onkeydown="if(event.key==='Enter')addTask(${sec.id})"/><input class="p-inp" id="tp-${sec.id}" type="number" placeholder="В"/><select class="tg-sel" id="tt-${sec.id}"><option value="">Тег</option><option value="urgent">Срочно</option><option value="repeat">Повтор</option><option value="long">Долгая</option><option value="easy">Лёгкая</option></select><button class="a-btn" onclick="addTask(${sec.id})">+</button>`;
+      tw.appendChild(ar);wrap.appendChild(tw);
+    }
+    c.appendChild(wrap);
+  });
+  if(!any)c.innerHTML='<div class="no-res">Задачи не найдены</div>';
+}
+
+// ══════════ GOALS & PLANS (новое) ══════════
+let goalFilter='all',goalKind='goal';
+function gInfo(g){
+  const t=todayStr();
+  const total=Math.max(1,diffDays(g.start,g.due)+1);
+  const elapsed=Math.min(total,Math.max(0,diffDays(g.start,t)+1));
+  const left=diffDays(t,g.due);
+  return{total,elapsed,left,pct:Math.round(elapsed/total*100),over:left<0&&!g.done,started:t>=g.start};
+}
+function leftText(g,i){
+  if(g.done)return 'выполнено '+(g.doneDate?fmtDate(g.doneDate):'');
+  if(!i.started){const n=diffDays(todayStr(),g.start);return 'старт через '+n+' '+pl(n,DAYW);}
+  if(i.over){const n=-i.left;return 'просрочено на '+n+' '+pl(n,DAYW);}
+  if(i.left===0)return 'дедлайн сегодня';
+  if(i.left===1)return 'дедлайн завтра';
+  return 'ещё '+i.left+' '+pl(i.left,DAYW);
+}
+function setGK(k){goalKind=k;$('gk-goal').classList.toggle('on',k==='goal');$('gk-plan').classList.toggle('on',k==='plan');$('g-em').placeholder=k==='goal'?'🎯':'📌';}
+function toggleGForm(){
+  const f=$('g-add');const open=!f.classList.contains('open');
+  f.classList.toggle('open',open);$('g-new-btn').textContent=open?'✕ Закрыть':'＋ Новая цель или план';
+  if(open){if(!$('g-start').value)$('g-start').value=todayStr();$('g-nm').focus();}
+}
+function gPreset(n){const s=$('g-start').value||todayStr();$('g-start').value=s;$('g-due').value=addDays(s,n);}
+function addGoal(){
+  const name=$('g-nm').value.trim();const start=$('g-start').value||todayStr();const due=$('g-due').value;
+  if(!name){toast('Напиши, что хочешь сделать');return;}
+  if(!due){toast('Выбери дедлайн — например «+30 дн»');return;}
+  if(due<start){toast('Дедлайн раньше начала');return;}
+  const pts=parseInt($('g-pts').value)||(goalKind==='goal'?50:10);
+  st.goals.push({id:st.nextId++,kind:goalKind,emoji:$('g-em').value.trim()||(goalKind==='goal'?'🎯':'📌'),name,start,due,pts,done:false,doneDate:''});
+  $('g-nm').value='';$('g-em').value='';$('g-due').value='';$('g-pts').value='';
+  toggleGForm();save();renderGoals();toast('🎯 Добавлено');
+}
+function applyGoalToggle(g){
+  g.done=!g.done;g.doneDate=g.done?todayStr():'';
+  const d=g.done?g.pts:-g.pts;st.balance+=d;st.earned+=d;
+  st.history=st.history.filter(h=>h.tid!=='g'+g.id);
+  if(g.done){st.history.unshift({tid:'g'+g.id,name:g.name,pts:g.pts,date:todayStr()});if(st.history.length>60)st.history=st.history.slice(0,60);}
+}
+function toggleGoal(id){
+  const g=st.goals.find(g=>g.id===id);if(!g)return;
+  applyGoalToggle(g);lastAction={type:'goal',data:{id}};
+  const lbl=g.name.length>26?g.name.slice(0,26)+'…':g.name;
+  if(g.done){recAct();toast('🏆 +'+g.pts+' В!');showUndo('Выполнено: '+lbl);}else showUndo('Снято: '+lbl);
+  save();renderGoals();updateHdrNums();updateLevel();
+}
+function setGoalDue(id,v){
+  const g=st.goals.find(g=>g.id===id);if(!g||!v)return;
+  if(v<g.start){toast('Дедлайн раньше начала');renderGoals();return;}
+  g.due=v;save();renderGoals();
+}
+function delGoal(id){
+  const g=st.goals.find(g=>g.id===id);if(!g)return;
+  if(!confirm('Удалить «'+g.name+'»?'))return;
+  if(g.done){st.balance-=g.pts;st.earned-=g.pts;st.history=st.history.filter(h=>h.tid!=='g'+g.id);}
+  st.goals=st.goals.filter(x=>x.id!==id);save();renderGoals();updateHdrNums();updateLevel();
+}
+function gDots(g,i){
+  let n=i.total,per=1;if(n>60){per=Math.ceil(n/60);n=Math.ceil(i.total/per);}
+  let h='';
+  for(let k=0;k<n;k++){
+    const a=k*per;const f=g.done||a<i.elapsed;
+    const t=!g.done&&i.started&&i.left>=0&&a<=i.elapsed-1&&i.elapsed-1<a+per;
+    h+='<i class="gd'+(f?' f':'')+(t?' t':'')+'"></i>';
+  }
+  return {html:h,per};
+}
+function renderGoals(){
+  if(!$('g-start').value)$('g-start').value=todayStr();
+  const chips=$('goal-chips');chips.innerHTML='';
+  [{id:'all',l:'Все'},{id:'goal',l:'🎯 Цели'},{id:'plan',l:'📌 Планы'},{id:'done',l:'✅ Готово'}].forEach(f=>{
+    const c=document.createElement('div');c.className='chip'+(goalFilter===f.id?' active':'');c.textContent=f.l;c.onclick=()=>{goalFilter=f.id;renderGoals();};chips.appendChild(c);
+  });
+  let list=st.goals.filter(g=>goalFilter==='all'||(goalFilter==='done'?g.done:g.kind===goalFilter));
+  list.sort((a,b)=>(a.done-b.done)||(a.done?b.due.localeCompare(a.due):a.due.localeCompare(b.due)));
+  const box=$('goals-list');
+  if(!list.length){box.innerHTML='<div class="empty-msg">'+(st.goals.length?'Здесь пока пусто':'Поставь первую цель: выбери дедлайн, и кружки будут закрашиваться каждый день')+'</div>';return;}
+  const C=131.95;
+  box.innerHTML=list.map(g=>{
+    const i=gInfo(g);const cls=g.done?'gc-done':(i.over?'gc-over':'');
+    const dots=gDots(g,i);
+    const ringPct=g.done?100:i.pct;
+    const center=g.done?'✓':(i.over?'!':(i.started?i.left:diffDays(todayStr(),g.start)));
+    const kind=g.kind==='goal'?'Цель':'План';
+    return `<div class="gcard ${cls}">
+      <div class="g-top">
+        <div class="g-emo">${esc(g.emoji)}</div>
+        <div class="g-info"><div class="g-name">${esc(g.name)}</div><div class="g-sub">${kind} · до ${fmtDate(g.due)} · ${leftText(g,i)}</div></div>
+        <div class="g-ring"><svg viewBox="0 0 50 50"><circle class="rb" cx="25" cy="25" r="21"/><circle class="rf" cx="25" cy="25" r="21" stroke-dasharray="${(ringPct/100*C).toFixed(1)} ${C}"/></svg><b>${center}</b></div>
+      </div>
+      <div class="g-dots">${dots.html}</div>
+      <div class="g-cap">${g.done?'Все '+i.total+' '+pl(i.total,DAYW)+' пройдены':'день '+i.elapsed+' из '+i.total}${dots.per>1?' · 1 кружок = '+dots.per+' '+pl(dots.per,DAYW):''}</div>
+      <div class="g-foot">
+        <input type="date" value="${g.due}" onchange="setGoalDue(${g.id},this.value)" aria-label="Дедлайн"/>
+        <span class="t-pts">${g.pts}В</span><span class="sp"></span>
+        <button class="t-del" onclick="delGoal(${g.id})" aria-label="Удалить">×</button>
+        <button class="g-done-btn" onclick="toggleGoal(${g.id})">${g.done?'Вернуть':'✓ Готово'}</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════ INBOX ══════════
+function addInbox(){const n=$('inbox-in').value.trim();if(!n)return;st.inbox.push({id:st.nextId++,name:n,date:todayStr()});$('inbox-in').value='';save();renderInbox();}
+function delInbox(id){st.inbox=st.inbox.filter(i=>i.id!==id);save();renderInbox();}
+function processInbox(id){
+  const item=st.inbox.find(i=>i.id===id);if(!item)return;
+  const sec=st.sections.find(s=>s.open)||st.sections[0];
+  if(sec)sec.tasks.push({id:st.nextId++,name:item.name,pts:10,done:false,tag:'',pin:false});
+  st.inbox=st.inbox.filter(i=>i.id!==id);save();renderInbox();toast('→ Добавлено в Миссии');
+}
+function renderInbox(){
+  const cnt=$('inbox-cnt');if(cnt)cnt.textContent=st.inbox.length;
+  const list=$('inbox-list');if(!list)return;list.innerHTML='';
+  if(!st.inbox.length){list.innerHTML='<div class="empty-msg">Голова свободна ✨</div>';return;}
+  st.inbox.forEach(item=>{
+    const row=document.createElement('div');row.className='inbox-item';
+    row.innerHTML=`<div style="flex:1"><div class="inbox-item-name">${esc(item.name)}</div><div style="font-size:10px;color:var(--tm);margin-top:2px">${fmtDate(item.date)}</div></div><button class="inbox-process-btn" onclick="processInbox(${item.id})">→ В миссии</button><span class="inbox-del" onclick="delInbox(${item.id})">×</span>`;
+    list.appendChild(row);
+  });
+}
+
+// ══════════ DAY PLANNER ══════════
+function rolloverPlanner(){const today=todayStr();let ch=false;st.planner.forEach(p=>{if(!p.done&&p.date!==today){p.date=today;ch=true;}});if(ch)save();}
+function addPlan(){
+  const n=$('plan-in').value.trim(),p=parseInt($('plan-pts').value)||10;if(!n)return;
+  st.planner.push({id:st.nextId++,date:todayStr(),name:n,pts:p,done:false});
+  $('plan-in').value='';$('plan-pts').value='';save();renderPlanner();
+}
+function togglePlan(id){
+  const p=st.planner.find(p=>p.id===id);if(!p)return;
+  p.done=!p.done;const d=p.done?p.pts:-p.pts;st.balance+=d;st.earned+=d;
+  lastAction={type:'plan',data:{id}};
+  if(p.done){toast('+'+p.pts+' В! ✅');recAct();showUndo('День: '+p.name.slice(0,24));}else showUndo('Снято: '+p.name.slice(0,24));
+  save();renderPlanner();updateHdrNums();updateLevel();
+}
+function delPlan(id){const p=st.planner.find(p=>p.id===id);if(p&&p.done){st.balance-=p.pts;st.earned-=p.pts;}st.planner=st.planner.filter(p=>p.id!==id);save();renderPlanner();updateHdrNums();updateLevel();}
+function renderPlanner(){
+  const today=todayStr();
+  const lbl=$('plan-dt-lbl');if(lbl)lbl.textContent=new Date().toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long'});
+  const list=$('plan-list');if(!list)return;list.innerHTML='';
+  const items=st.planner.filter(p=>p.date===today);
+  if(!items.length)list.innerHTML='<div class="empty-msg">Чистый лист — добавь задачи на сегодня ✨</div>';
+  items.forEach(p=>{
+    const row=document.createElement('div');row.className='plan-task'+(p.done?' done':'');
+    row.innerHTML=`<div class="cb${p.done?' on':''}" onclick="togglePlan(${p.id})"></div><span class="t-name">${esc(p.name)}</span><span class="t-pts">${p.pts}В</span><button class="t-del" onclick="delPlan(${p.id})">×</button>`;
+    list.appendChild(row);
+  });
+  const dl=st.goals.filter(g=>!g.done&&g.due<=today).sort((a,b)=>a.due.localeCompare(b.due));
+  const box=$('plan-deadlines');
+  box.innerHTML=dl.length?'<div class="dl-title">⏰ Горят дедлайны</div>'+dl.map(g=>{const n=diffDays(g.due,today);return `<div class="dl-row${n>0?' over':''}" onclick="goSection('goals')"><span>${esc(g.emoji)}</span><span>${esc(g.name)}</span><span class="dl-when">${n>0?'просрочено '+n+' '+pl(n,DAYW):'сегодня'}</span></div>`;}).join(''):'';
+}
+
+// ══════════ DIARY ══════════
+let diaryDate=todayStr();
+function diaryPrevDay(){diaryDate=addDays(diaryDate,-1);renderDiary();}
+function diaryNextDay(){diaryDate=addDays(diaryDate,1);renderDiary();}
+function diaryGoDate(d){diaryDate=d;renderDiary();}
+function diarySave(){const txt=$('diary-text').value;if(txt.trim())st.diary[diaryDate]=txt;else delete st.diary[diaryDate];save();renderDiaryList();}
+function renderDiary(){
+  const lbl=$('diary-date-lbl');
+  if(lbl)lbl.textContent=(diaryDate===todayStr()?'Сегодня · ':'')+parseD(diaryDate).toLocaleDateString('ru',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const ta=$('diary-text');if(ta)ta.value=st.diary[diaryDate]||'';
+  renderDiaryList();
+}
+function renderDiaryList(){
+  const list=$('diary-list');if(!list)return;
+  const dates=Object.keys(st.diary).sort().reverse();
+  if(!dates.length){list.innerHTML='<div class="empty-msg">Записей пока нет</div>';return;}
+  list.innerHTML='';
+  dates.forEach(dt=>{
+    const entry=st.diary[dt];const preview=entry.length>90?entry.slice(0,90)+'…':entry;
+    const row=document.createElement('div');row.className='diary-entry'+(dt===diaryDate?' active':'');row.onclick=()=>diaryGoDate(dt);
+    row.innerHTML='<div class="diary-entry-date"></div><div class="diary-entry-preview"></div>';
+    row.children[0].textContent=parseD(dt).toLocaleDateString('ru',{day:'numeric',month:'long',year:'numeric'});
+    row.children[1].textContent=preview;list.appendChild(row);
+  });
+}
+
+// ══════════ HABITS ══════════
+function addHabit(){
+  const em=$('h-em').value.trim()||'⭐';const nm=$('h-nm').value.trim();const pts=parseInt($('h-pts').value)||10;if(!nm)return;
+  st.habits.push({id:st.nextId++,emoji:em,name:nm,pts,doneDate:'',streak:0,history:[]});
+  $('h-em').value='';$('h-nm').value='';$('h-pts').value='';save();renderHabits();
+}
+function toggleHabit(id){
+  const h=st.habits.find(h=>h.id===id);if(!h)return;const today=todayStr();
+  if(h.doneDate===today){toast('Уже отмечено 👍');return;}
+  h.doneDate=today;if(!h.history.includes(today))h.history.push(today);
+  const sorted=[...h.history].sort().reverse();let streak=1;
+  for(let i=1;i<sorted.length;i++){if(diffDays(sorted[i],sorted[i-1])===1)streak++;else break;}
+  h.streak=streak;st.balance+=h.pts;st.earned+=h.pts;lastAction={type:'habit',data:{id,pts:h.pts}};recAct();
+  toast(h.emoji+' +'+h.pts+' В! Стрик: '+streak+' 🔥');showUndo('Привычка: '+h.name);save();renderHabits();updateHdrNums();updateLevel();
+}
+function delHabit(id){if(!confirm('Удалить привычку?'))return;st.habits=st.habits.filter(h=>h.id!==id);save();renderHabits();}
+function renderHabits(){
+  const list=$('habits-list');if(!list)return;list.innerHTML='';
+  const today=todayStr();
+  st.habits.forEach(h=>{
+    const doneT=h.doneDate===today;
+    const dots=[];
+    for(let i=0;i<14;i++){
+      const ds=addDays(today,-i);const done=h.history.includes(ds);const isToday=i===0;
+      const bg=isToday?(doneT?'#1D9E75':'rgba(127,119,221,0.35)'):(done?'#1D9E75':'rgba(127,119,221,0.16)');
+      dots.push(`<div class="h-dot" style="background:${bg}" title="${ds}"><span class="h-dot-lbl">${isToday?'сег':''}</span></div>`);
+    }
+    const card=document.createElement('div');card.className='habit-card';
+    card.innerHTML=`<div class="h-top"><span class="h-emoji">${esc(h.emoji)}</span><div class="h-info"><div class="h-name">${esc(h.name)}</div><div class="h-streak">Стрик: <b>${h.streak}</b> дн · ${h.pts}В/день</div></div><button class="h-chk${doneT?' dt':''}" onclick="toggleHabit(${h.id})">${doneT?'✓':'+'}</button></div><div class="h-dots-row">${dots.join('')}</div><div class="h-footer"><div style="font-size:11px;color:var(--tm)">слева — сегодня · последние 14 дней</div><button class="h-del-btn" onclick="delHabit(${h.id})">Удалить</button></div>`;
+    list.appendChild(card);
+  });
+}
+
+// ══════════ WEEK ══════════
+function addWG(){const n=$('wg-nm').value.trim(),p=parseInt($('wg-pts').value)||20;if(!n)return;st.weekGoals.push({id:st.nextId++,name:n,pts:p,done:false});$('wg-nm').value='';$('wg-pts').value='';save();renderWeek();}
+function toggleWG(id){const wg=st.weekGoals.find(g=>g.id===id);if(!wg)return;wg.done=!wg.done;const d=wg.done?wg.pts:-wg.pts;st.balance+=d;st.earned+=d;lastAction={type:'wg',data:{id}};if(wg.done){toast('🎯 +'+wg.pts+' В!');showUndo('Цель: '+wg.name.slice(0,24));}save();renderWeek();updateHdrNums();updateLevel();}
+function delWG(id){st.weekGoals=st.weekGoals.filter(g=>g.id!==id);save();renderWeek();}
+function renderWeek(){
+  const total=st.weekGoals.reduce((a,g)=>a+g.pts,0);const allDone=st.weekGoals.length>0&&st.weekGoals.every(g=>g.done);
+  const wb=$('wk-bonus');if(wb)wb.textContent=allDone?'🏆 Всё!':'Бонус: '+(total?'+'+total+' В':'—');
+  const list=$('wk-list');if(!list)return;list.innerHTML='';
+  if(!st.weekGoals.length){list.innerHTML='<div class="empty-msg">Поставь цели на неделю</div>';return;}
+  st.weekGoals.forEach(g=>{const row=document.createElement('div');row.className='wk-goal'+(g.done?' done':'');row.innerHTML=`<div class="cb${g.done?' on':''}" onclick="toggleWG(${g.id})"></div><span class="wk-name">${esc(g.name)}</span><span class="wk-pts">${g.pts}В</span><span class="wk-del" onclick="delWG(${g.id})">×</span>`;list.appendChild(row);});
+}
+
+// ══════════ QUICK ENTRY (быстрая запись операции) ══════════
+const CAT_KW=[
+ [/продукт|магазин|пятёр|пятер|вкусвилл|магнит|лента|еда|обед|завтрак|ужин|кофе|кафе|шаур|пицц|бургер|перекус|вода|чай|доставк/,'Еда'],
+ [/такси|метро|бензин|автобус|проезд|парков|каршер|самокат|поезд|билет|заправк/,'Транспорт'],
+ [/аптек|врач|анализ|лекарств|стомат|зал\b|абонемент|массаж|узи/,'Здоровье'],
+ [/одежд|футболк|кроссов|куртк|джинс|обув|шоппинг/,'Одежда'],
+ [/аренд|квартир|коммунал|интернет|свет\b|жкх|ремонт/,'Жильё'],
+ [/долг|кредит|тинькофф|тиньк|сбер|альфа|втб|процент|рассрочк|штраф/,'Долги'],
+ [/ресторан|кино|бар\b|пиво|игр|книг|свидан|концерт|подписк|steam|стим|сигарет|айкос|стики|развлеч/,'Развлечения'],
+ [/инвест|акци|вклад|брокер/,'Инвестиции']
+];
+const INC_RE=/^(зарплат|зп\b|оклад|аванс|кпи|kpi|смен|доход|премия|выплат|фриланс|заказ|возврат|кэшбэк|кешбэк|подработк|продажа)/i;
+function parseQuick(raw){
+  let t=(raw||'').trim();if(!t)return null;
+  let type=null;
+  if(/^\+/.test(t)){type='inc';t=t.replace(/^\+\s*/,'');}
+  else if(/^[-−–—]/.test(t)){type='exp';t=t.replace(/^[-−–—]\s*/,'');}
+  const unit='(тыс\\.?|к|k|₽|руб\\.?|р\\.?)?';
+  let m=t.match(new RegExp('(\\d[\\d\\s]*(?:[.,]\\d+)?)\\s*'+unit+'\\s*$','i')),name='';
+  if(m){name=t.slice(0,m.index).trim();}
+  else{const m2=t.match(new RegExp('^(\\d[\\d\\s]*(?:[.,]\\d+)?)\\s*'+unit+'\\s+(.+)$','i'));if(m2){m=m2;name=m2[3].trim();}}
+  if(!m)name=t;
+  let amt=0;
+  if(m){amt=parseFloat(m[1].replace(/\s/g,'').replace(',','.'))||0;if(m[2]&&/^(тыс|к|k)/i.test(m[2]))amt*=1000;}
+  const key=name.toLowerCase();const low=key;
+  const mem=st.catMem[key];
+  if(type===null)type=mem?mem.type:(INC_RE.test(low)?'inc':'exp');
+  let cat=mem?mem.cat:null;
+  if(!cat){
+    if(type==='inc'){cat=/фриланс|заказ|подработк/.test(low)?'Фриланс':/wb|вб|озон|ozon|маркетплейс/.test(low)?'Маркетплейсы':'Работа';}
+    else{cat='Другое';for(const[re,c]of CAT_KW){if(re.test(low)){cat=c;break;}}}
+  }
+  return{type,name:name?name.charAt(0).toUpperCase()+name.slice(1):'',amt,cat,key};
+}
+let qTypeManual=false,qType='exp',qCatManual=false,qCat='Другое',qDay=0,qRecent=[];
+function buildQCats(){$('q-cat').innerHTML=FIN_CATS.map(c=>`<option>${c}</option>`).join('');}
+function renderQRecent(){
+  const seen=new Set();qRecent=[];
+  [...st.finance].sort((a,b)=>b.date.localeCompare(a.date)).forEach(f=>{const k=f.name.toLowerCase();if(!seen.has(k)&&qRecent.length<8){seen.add(k);qRecent.push(f);}});
+  $('q-recent').innerHTML=qRecent.map((f,i)=>`<button class="qchip" onclick="qPick(${i})"><span>🕘</span>${esc(f.name)}</button>`).join('');
+}
+function qPick(i){
+  const f=qRecent[i];if(!f)return;
+  const amt=String(f.amt);const inp=$('q-in');
+  inp.value=(f.type==='inc'?'+':'')+f.name+' '+amt;
+  qTypeManual=false;qCatManual=false;qUpdate();inp.focus();
+  const end=inp.value.length;try{inp.setSelectionRange(end-amt.length,end);}catch(e){}
+}
+function qEffective(){
+  const p=parseQuick($('q-in').value);
+  const type=qTypeManual?qType:(p?p.type:'exp');
+  const cat=qCatManual?qCat:(p?p.cat:'Другое');
+  return{p,type,cat};
+}
+function qUpdate(){
+  const e=qEffective();
+  const tb=$('q-type');tb.textContent=e.type==='inc'?'+ Доход':'− Расход';tb.classList.toggle('inc',e.type==='inc');
+  $('q-cat').value=e.cat;
+  const ok=e.p&&e.p.amt>0;$('q-go').classList.toggle('ok',!!ok);
+  $('q-prev').textContent=ok?((e.type==='inc'?'+':'−')+fmtAmt(e.p.amt)+' · '+(e.p.name||e.cat)+' · '+e.cat):'Название и сумма: «Кофе 420», «+Зарплата 5к»';
+  $('q-day').textContent=qDay?'Вчера':'Сегодня';
+}
+function qToggleType(){const e=qEffective();qType=e.type==='inc'?'exp':'inc';qTypeManual=true;qUpdate();$('q-in').focus();}
+function qCatChange(){qCat=$('q-cat').value;qCatManual=true;qUpdate();}
+function qToggleDay(){qDay=qDay?0:1;qUpdate();$('q-in').focus();}
+function openQuick(){
+  buildQCats();renderQRecent();
+  qTypeManual=false;qCatManual=false;qDay=0;$('q-in').value='';qUpdate();
+  $('q-back').classList.add('open');$('q-sheet').classList.add('open');
+  $('q-in').focus();
+}
+function closeQuick(){$('q-in').blur();$('q-back').classList.remove('open');$('q-sheet').classList.remove('open');$('q-sheet').style.bottom='';}
+function qSubmit(){
+  const e=qEffective();
+  if(!e.p||!(e.p.amt>0)){toast('Добавь сумму: «Кофе 420»');$('q-in').focus();return;}
+  const name=e.p.name||e.cat;
+  const entry={id:st.nextId++,type:e.type,name,amt:e.p.amt,cat:e.cat,date:qDay?addDays(todayStr(),-1):todayStr()};
+  st.finance.unshift(entry);
+  if(e.p.key){st.catMem[e.p.key]={cat:e.cat,type:e.type};}
+  lastAction={type:'fin',data:{id:entry.id}};
+  save();closeQuick();
+  if(currentSec==='finance')renderFin();
+  showUndo((e.type==='inc'?'+':'−')+fmtAmt(e.p.amt)+' — '+name);
+  toast((e.type==='inc'?'📈 +':'📉 −')+fmtAmt(e.p.amt)+' · '+e.cat);
+}
+if(window.visualViewport){
+  const vv=window.visualViewport;
+  const fix=()=>{const kb=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);const s=$('q-sheet');if(s.classList.contains('open'))s.style.bottom=(8+kb)+'px';};
+  vv.addEventListener('resize',fix);vv.addEventListener('scroll',fix);
+}
+
+// ══════════ FINANCE ══════════
+function setBudget(){
+  const v=prompt('Бюджет на месяц, ₽ (0 — выключить):',st.budget.limit||'');
+  if(v===null)return;
+  const n=parseFloat(String(v).replace(/\s/g,'').replace(',','.'))||0;
+  st.budget.limit=Math.max(0,n);save();updateBudgetCard();
+}
+function updateBudgetCard(){
+  const t=todayStr(),mk=t.slice(0,7);
+  const exp=st.finance.filter(f=>f.type==='exp'&&f.date.slice(0,7)===mk).reduce((a,f)=>a+f.amt,0);
+  const todayExp=st.finance.filter(f=>f.type==='exp'&&f.date===t).reduce((a,f)=>a+f.amt,0);
+  const lim=st.budget.limit||0;
+  const big=$('tc-big');
+  if(lim>0){
+    const now=new Date();const dim=new Date(now.getFullYear(),now.getMonth()+1,0).getDate();const dl=dim-now.getDate()+1;
+    const rem=lim-exp;const guide=Math.max(0,(lim-(exp-todayExp))/dl);
+    $('tc-lbl').textContent='Свободно до конца месяца';
+    big.textContent=fmtAmt(rem);big.classList.toggle('neg',rem<0);
+    $('tc-mid').style.display='';
+    $('tc-today').textContent=fmtAmt(todayExp)+' из '+fmtAmt(guide);
+    const f=$('tc-fill');const pct=guide>0?Math.min(100,todayExp/guide*100):(todayExp>0?100:0);
+    f.style.width=pct+'%';f.classList.toggle('over',todayExp>guide&&guide>0||(guide===0&&todayExp>0));
+    $('tc-hint').textContent='Ориентир на сегодня — '+fmtAmt(guide)+' · осталось '+dl+' '+pl(dl,DAYW);
+  }else{
+    $('tc-lbl').textContent='Бюджет на месяц';big.textContent='Задай лимит';big.classList.remove('neg');
+    $('tc-mid').style.display='none';
+    $('tc-hint').textContent='Нажми, укажи сумму — и я покажу, сколько можно тратить в день. Потрачено в этом месяце: '+fmtAmt(exp);
+  }
+}
+function delFin(id){
+  const e=st.finance.find(f=>f.id===id);if(!e)return;
+  st.finance=st.finance.filter(f=>f.id!==id);lastAction={type:'finDel',data:{entry:e}};
+  save();renderFin();showUndo('Удалено: '+e.name.slice(0,24));
+}
+function dayLabel(d){
+  const t=todayStr();if(d===t)return 'Сегодня';if(d===addDays(t,-1))return 'Вчера';
+  return parseD(d).toLocaleDateString('ru',{day:'numeric',month:'long'});
+}
+function renderFin(){
+  updateBudgetCard();
+  const mk=todayStr().slice(0,7);
+  const ms=st.finance.filter(f=>f.date.slice(0,7)===mk);
+  const inc=ms.filter(f=>f.type==='inc').reduce((a,f)=>a+f.amt,0);
+  const exp=ms.filter(f=>f.type==='exp').reduce((a,f)=>a+f.amt,0);
+  $('fin-inc').textContent='+'+fmtAmt(inc);$('fin-exp').textContent='−'+fmtAmt(exp);
+  const fb=$('fin-bal');fb.textContent=fmtAmt(inc-exp);fb.classList.toggle('neg',inc-exp<0);
+  const byCat={};ms.filter(f=>f.type==='exp').forEach(f=>{byCat[f.cat]=(byCat[f.cat]||0)+f.amt;});
+  const maxCat=Math.max(...Object.values(byCat),1);
+  let ch='<div class="fin-chart-title">Расходы по категориям за месяц</div>';
+  if(!Object.keys(byCat).length)ch+='<div class="empty-msg">Расходов в этом месяце нет</div>';
+  else Object.entries(byCat).sort((a,b)=>b[1]-a[1]).forEach(([cat,amt])=>{ch+=`<div class="bar-row"><span class="bar-lbl">${esc(cat)}</span><div class="bar-bg"><div class="bar-fill" style="width:${Math.round(amt/maxCat*100)}%;background:${FIN_COLORS[cat]||'var(--pm)'}"></div></div><span class="bar-val">${fmtAmt(amt)}</span></div>`;});
+  $('fin-cat-chart').innerHTML=ch;
+  const now0=new Date();now0.setHours(0,0,0,0);
+  const mon=new Date(now0);mon.setDate(now0.getDate()-((now0.getDay()+6)%7));
+  const weeks=[];
+  for(let i=7;i>=0;i--){
+    const ws=new Date(mon);ws.setDate(mon.getDate()-i*7);const we=new Date(ws);we.setDate(ws.getDate()+6);
+    const a=ymd(ws),b=ymd(we);
+    weeks.push({exp:st.finance.filter(f=>f.type==='exp'&&f.date>=a&&f.date<=b).reduce((s,f)=>s+f.amt,0),label:ws.getDate()});
+  }
+  const maxW=Math.max(...weeks.map(w=>w.exp),1);
+  $('fin-week-chart').innerHTML='<div class="fin-chart-title">Расходы по неделям</div><div style="display:flex;align-items:flex-end;gap:4px;height:58px">'+weeks.map(w=>`<div class="wbar-wrap"><div class="wbar" style="height:${Math.round(w.exp/maxW*52)+2}px;background:rgba(127,119,221,${w.exp?0.7:0.25})" title="${fmtAmt(w.exp)}"></div><div class="wbar-lbl">${w.label}</div></div>`).join('')+'</div>';
+  const listEl=$('fin-list-el');
+  const items=[...st.finance].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,60);
+  if(!items.length){listEl.innerHTML='<div class="empty-msg">Операций нет. Нажми «Записать операцию»</div>';return;}
+  const groups=[];items.forEach(f=>{let g=groups[groups.length-1];if(!g||g.d!==f.date){g={d:f.date,list:[]};groups.push(g);}g.list.push(f);});
+  listEl.innerHTML=groups.map(g=>{
+    const net=g.list.reduce((a,f)=>a+(f.type==='inc'?f.amt:-f.amt),0);
+    return `<div class="fin-day"><b>${dayLabel(g.d)}</b><span>${net>0?'+':net<0?'−':''}${fmtAmt(Math.abs(net))}</span></div><div class="fin-list">`+g.list.map(f=>`<div class="fin-item"><div class="fin-cat-dot" style="background:${FIN_COLORS[f.cat]||'var(--pm)'}"></div><div class="fin-item-info"><div class="fin-item-name">${esc(f.name)}</div><div class="fin-item-cat">${esc(f.cat)}</div></div><span class="fin-item-amt ${f.type}">${f.type==='inc'?'+':'−'}${fmtAmt(f.amt)}</span><span class="fin-item-del" onclick="delFin(${f.id})">×</span></div>`).join('')+'</div>';
+  }).join('');
+}
+
+// ══════════ PAYMENT CALENDAR ══════════
+let payCalYear=new Date().getFullYear(),payCalMonth=new Date().getMonth();
+function addPayment(){
+  const nm=$('pay-nm').value.trim();const amt=parseFloat($('pay-amt').value);const day=parseInt($('pay-day').value);
+  if(!nm||isNaN(amt)||isNaN(day)||day<1||day>31)return;
+  st.payments.push({id:st.nextId++,name:nm,amt,day,paid:[]});
+  $('pay-nm').value='';$('pay-amt').value='';$('pay-day').value='';save();renderPayCal();toast('Платёж добавлен');
+}
+function togglePayment(id){
+  const p=st.payments.find(p=>p.id===id);if(!p)return;
+  const key=payCalYear+'-'+pad(payCalMonth+1);
+  p.paid=p.paid.includes(key)?p.paid.filter(k=>k!==key):[...p.paid,key];
+  save();renderPayCal();
+}
+function delPayment(id){if(!confirm('Удалить платёж?'))return;st.payments=st.payments.filter(p=>p.id!==id);save();renderPayCal();}
+function payCalPrev(){payCalMonth--;if(payCalMonth<0){payCalMonth=11;payCalYear--;}renderPayCal();}
+function payCalNext(){payCalMonth++;if(payCalMonth>11){payCalMonth=0;payCalYear++;}renderPayCal();}
+function renderPayCal(){
+  const monthKey=payCalYear+'-'+pad(payCalMonth+1);
+  const names=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  $('pay-cal-month').textContent=names[payCalMonth]+' '+payCalYear;
+  const grid=$('pay-cal-grid');grid.innerHTML='';
+  ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(d=>{const el=document.createElement('div');el.className='pay-cal-day-lbl';el.textContent=d;grid.appendChild(el);});
+  const startOffset=(new Date(payCalYear,payCalMonth,1).getDay()+6)%7;
+  const dim=new Date(payCalYear,payCalMonth+1,0).getDate();
+  const td=new Date();const isCur=td.getFullYear()===payCalYear&&td.getMonth()===payCalMonth;
+  for(let i=0;i<startOffset;i++){const el=document.createElement('div');el.className='pay-cal-day empty';grid.appendChild(el);}
+  for(let d=1;d<=dim;d++){
+    const el=document.createElement('div');const pd=st.payments.filter(p=>p.day===d);
+    const isToday=isCur&&d===td.getDate();
+    const isPast=new Date(payCalYear,payCalMonth,d)<new Date(td.getFullYear(),td.getMonth(),td.getDate());
+    el.className='pay-cal-day'+(isToday?' today':'')+(isPast?' past':'')+(pd.length?' has-payment':'');
+    el.innerHTML=`<span class="pay-cal-day-num">${d}</span>`;
+    pd.forEach(p=>{const dot=document.createElement('div');dot.className='pay-dot';dot.style.background=p.paid.includes(monthKey)?'var(--gr)':'var(--rd)';el.appendChild(dot);});
+    grid.appendChild(el);
+  }
+  const list=$('pay-list');list.innerHTML='';
+  if(!st.payments.length){list.innerHTML='<div class="empty-msg">Добавь обязательные платежи</div>';return;}
+  const todayNum=isCur?td.getDate():0;
+  [...st.payments].sort((a,b)=>a.day-b.day).forEach(p=>{
+    const paid=p.paid.includes(monthKey);const overdue=!paid&&isCur&&p.day<todayNum;
+    const row=document.createElement('div');row.className='pay-item'+(overdue?' overdue':'')+(paid?' paid':'');
+    row.innerHTML=`<div class="pay-item-info"><div class="pay-item-name">${esc(p.name)}</div><div class="pay-item-date">${p.day}-го числа каждый месяц</div></div><span class="pay-item-amt">${fmtAmt(p.amt)}</span><button class="pay-item-paid-btn" onclick="togglePayment(${p.id})">${paid?'✓ Оплачено':'Оплатить'}</button><button class="t-del" onclick="delPayment(${p.id})">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+// ══════════ REWARDS ══════════
+function spendRew(id){
+  const r=st.rewards.find(r=>r.id===id);if(!r||st.balance<r.cost)return;
+  if(st.mode==='saving'&&r.cost>200){toast('⚠️ Сберегательный режим: награды >200В заблокированы');return;}
+  if(st.mode==='crisis'){toast('🔒 Кризисный режим: награды заморожены');return;}
+  st.balance-=r.cost;st.spent+=r.cost;lastAction={type:'spend',data:{id,cost:r.cost}};toast('🎁 '+r.name);showUndo('Потрачено: '+r.name.slice(0,24));save();render();
+}
+function startEditRew(id){editRewId=editRewId===id?null:id;renderRews();}
+function saveEditRew(id){const r=st.rewards.find(r=>r.id===id);if(!r)return;const n=$('re-n-'+id).value.trim(),c=parseInt($('re-c-'+id).value);if(n)r.name=n;if(!isNaN(c))r.cost=c;editRewId=null;save();renderRews();toast('Обновлено');}
+function addRew(){const n=$('rn-nm').value.trim(),c=parseInt($('rn-cost').value)||10;if(!n)return;st.rewards.push({id:st.nextId++,name:n,cost:c});$('rn-nm').value='';$('rn-cost').value='';save();renderRews();}
+function renderRews(){
+  const c=$('rew-c');if(!c)return;c.innerHTML='';
+  const sorted=[...st.rewards].sort((a,b)=>b.cost-a.cost);
+  RTIERS.forEach((tier,idx)=>{
+    const nextMin=idx>0?RTIERS[idx-1].min:Infinity;
+    const items=sorted.filter(r=>r.cost>=tier.min&&r.cost<nextMin);if(!items.length)return;
+    const lbl=document.createElement('div');lbl.className='rew-tier';lbl.textContent=tier.n;c.appendChild(lbl);
+    items.forEach(r=>{
+      const isBlocked=(st.mode==='saving'&&r.cost>200)||st.mode==='crisis';const isEdit=editRewId===r.id;
+      const wrap=document.createElement('div');wrap.className='rew-item';
+      if(isEdit)wrap.innerHTML=`<input class="rew-ci" id="re-c-${r.id}" type="number" value="${r.cost}"/><input class="rew-ni" id="re-n-${r.id}" value="${esc(r.name)}"/><button class="rew-sv" onclick="saveEditRew(${r.id})">✓</button><button class="spend-btn" style="background:var(--s2);border-color:var(--bd);color:var(--tm)" onclick="startEditRew(${r.id})">✕</button>`;
+      else wrap.innerHTML=`<span class="rew-cost" onclick="startEditRew(${r.id})">${r.cost}В</span><span class="rew-name" style="${isBlocked?'opacity:.4':''}">${esc(r.name)}</span><button class="spend-btn" onclick="spendRew(${r.id})" ${(st.balance<r.cost||isBlocked)?'disabled':''}>${isBlocked?'🔒':'Забрать'}</button>`;
+      c.appendChild(wrap);
+    });
+  });
+}
+
+// ══════════ STATS ══════════
+function renderStats(){
+  const total=st.sections.reduce((a,s)=>a+s.tasks.length,0);const done=st.sections.reduce((a,s)=>a+s.tasks.filter(t=>t.done).length,0);const pct=total?Math.round(done/total*100):0;
+  $('s-bal').textContent=st.balance+' В';$('s-done').textContent=done;$('s-earn').textContent=st.earned+' В';$('s-spent').textContent=st.spent+' В';
+  $('s-pct').textContent=pct+'%';$('s-pbar').style.width=pct+'%';
+  const pl2=$('s-plist');pl2.innerHTML='';
+  st.sections.forEach(sec=>{const t=sec.tasks.length,d=sec.tasks.filter(t=>t.done).length,p=t?Math.round(d/t*100):0;const row=document.createElement('div');row.className='prog-row';row.innerHTML=`<span class="pr-em">${esc(sec.emoji)}</span><span class="pr-nm">${esc(sec.name.replace('Миссии ',''))}</span><div class="pr-bar"><div class="pr-bf" style="width:${p}%"></div></div><span class="pr-pc">${d}/${t}</span>`;pl2.appendChild(row);});
+  const hl=$('hist-list');hl.innerHTML='';
+  if(!st.history.length){hl.innerHTML='<div style="font-size:12px;color:var(--tm);padding:7px 0">Пока пусто</div>';return;}
+  st.history.slice(0,20).forEach(h=>{const row=document.createElement('div');row.className='hist-item';row.innerHTML=`<span class="hist-pts">+${h.pts}В</span><span class="hist-nm">${esc(h.name)}</span><span class="hist-dt">${fmtDate(h.date)}</span>`;hl.appendChild(row);});
+}
+
+// ══════════ SETTINGS ══════════
+function renderSettings(){
+  updateMode();updateNotifBtn();
+  $('bk-last').textContent=st.lastBackup?fmtDate(st.lastBackup)+' ('+(diffDays(st.lastBackup,todayStr()))+' '+pl(diffDays(st.lastBackup,todayStr()),DAYW)+' назад)':'ещё не сохраняли';
+  try{if(navigator.storage&&navigator.storage.persisted)navigator.storage.persisted().then(p=>{$('bk-status').innerHTML=p?'<span class="ok-pill">защищено</span>':'<span class="bad-pill">делай копии</span>';});}catch(e){}
+  const keys=snapKeys();
+  let h=keys.map(k=>`<div class="snap-row"><span>${fmtDate(k.replace(SNAP_PREFIX,''))}</span><button onclick="restoreSnap('${k}')">Вернуть</button></div>`).join('');
+  if(localStorage.getItem('gol_pre_import'))h+=`<div class="snap-row"><span>Перед последним восстановлением</span><button onclick="restoreSnap('gol_pre_import')">Вернуть</button></div>`;
+  $('snap-list').innerHTML=h||'<div class="empty-msg">Появятся завтра</div>';
+}
+
+// ══════════ HEADER / RENDER ══════════
+function updateHdrNums(){
+  const done=st.sections.reduce((a,s)=>a+s.tasks.filter(t=>t.done).length,0);
+  $('bal-val').textContent=st.balance+' В';$('m-earn').textContent=st.earned;$('m-spent').textContent=st.spent;$('m-done').textContent=done;
+  $('gs-num').textContent=calcStreak();
+  $('drawer-sub').textContent=st.balance+' В · '+getCurrentLevel().l;
+  $('inbox-cnt').textContent=st.inbox.length;
+}
+function render(){updateHdrNums();updateLevel();updateMode();if(currentSec==='missions')renderSecs();if(currentSec==='rewards')renderRews();}
+
+// ══════════ FINANCIAL PLANNER (сценарии) ══════════
+function fpEnsure(){
+  if(!st.fpScenarios||!st.fpScenarios.length){st.fpScenarios=[{id:st.nextId++,name:'Сценарий 1',rows:[],comment:''}];st.fpActive=0;save();}
+  if(st.fpActive===undefined||st.fpActive>=st.fpScenarios.length||st.fpActive<0)st.fpActive=0;
+}
+function fpCur(){fpEnsure();return st.fpScenarios[st.fpActive];}
+function fpSwitchScenario(){st.fpActive=parseInt($('fp-scenario-sel').value)||0;save();renderFinPlan();}
+function fpAddScenario(){fpEnsure();const name=prompt('Название сценария:','Сценарий '+(st.fpScenarios.length+1));if(!name)return;st.fpScenarios.push({id:st.nextId++,name,rows:[],comment:''});st.fpActive=st.fpScenarios.length-1;save();renderFinPlan();}
+function fpDelScenario(){fpEnsure();if(st.fpScenarios.length<=1){toast('Нельзя удалить последний сценарий');return;}if(!confirm('Удалить сценарий «'+fpCur().name+'»?'))return;st.fpScenarios.splice(st.fpActive,1);st.fpActive=Math.max(0,st.fpActive-1);save();renderFinPlan();}
+function fpAddRow(type){fpCur().rows.push({id:st.nextId++,type,name:'',amt:0,note:''});save();renderFinPlan();}
+function fpDelRow(id){const sc=fpCur();sc.rows=sc.rows.filter(r=>r.id!==id);save();renderFinPlan();}
+function fpTotals(sc){const inc=sc.rows.filter(r=>r.type==='inc').reduce((a,r)=>a+r.amt,0);const exp=sc.rows.filter(r=>r.type==='exp').reduce((a,r)=>a+r.amt,0);return{inc,exp,bal:inc-exp};}
+function fpUpdateRow(id,field,val){
+  const sc=fpCur();const row=sc.rows.find(r=>r.id===id);if(!row)return;
+  if(field==='amt')row.amt=parseFloat(val)||0;else row[field]=val;
+  save();const t=fpTotals(sc);
+  $('fp-inc-total').textContent=fmtAmt(t.inc);$('fp-exp-total').textContent=fmtAmt(t.exp);renderFpSummary(t.inc,t.exp,t.bal);
+}
+function fpSaveComment(){fpCur().comment=$('fp-comment').value;save();}
+function renderFpSummary(inc,exp,bal){
+  const card=(l,v,c)=>`<div style="background:var(--s1);border:1px solid var(--bd);border-radius:14px;padding:11px 12px"><div style="font-size:11px;color:var(--tm);margin-bottom:3px">${l}</div><div style="font-size:17px;font-weight:600;color:${c};white-space:nowrap">${fmtAmt(v)}</div></div>`;
+  $('fp-summary').innerHTML=card('Доходы',inc,'var(--gr)')+card('Расходы',exp,'var(--rd)')+card('Баланс',bal,bal>=0?'var(--p)':'var(--rd)');
+}
+function renderFinPlan(){
+  fpEnsure();const sc=fpCur();
+  const sel=$('fp-scenario-sel');sel.innerHTML='';
+  st.fpScenarios.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s.name;if(i===st.fpActive)o.selected=true;sel.appendChild(o);});
+  const t=fpTotals(sc);renderFpSummary(t.inc,t.exp,t.bal);
+  $('fp-inc-total').textContent=fmtAmt(t.inc);$('fp-exp-total').textContent=fmtAmt(t.exp);
+  const IS='flex:1;background:var(--s1);border:none;border-right:1px solid var(--bd);padding:12px 10px;color:var(--tx);font-size:14px;outline:none;min-width:0';
+  const AS='width:88px;background:var(--s1);border:none;border-right:1px solid var(--bd);padding:12px 7px;font-size:14px;outline:none;text-align:right';
+  function rows(type,cid,color){
+    const c=$(cid);c.innerHTML='';const list=sc.rows.filter(r=>r.type===type);
+    if(!list.length){c.innerHTML='<div style="padding:11px 14px;font-size:12px;color:var(--tm)">Нет записей</div>';return;}
+    list.forEach(r=>{
+      const row=document.createElement('div');row.style.cssText='display:flex;align-items:center;border-bottom:1px solid rgba(127,119,221,0.08)';
+      row.innerHTML=`<input style="${IS}" placeholder="Название..." value="${esc(r.name)}" oninput="fpUpdateRow(${r.id},'name',this.value)"/><input type="number" inputmode="decimal" style="${AS};color:${color}" placeholder="0" value="${r.amt||''}" oninput="fpUpdateRow(${r.id},'amt',this.value)"/><input style="width:78px;background:var(--s1);border:none;border-right:1px solid var(--bd);padding:12px 7px;color:var(--tm);font-size:12px;outline:none" placeholder="Заметка" value="${esc(r.note)}" oninput="fpUpdateRow(${r.id},'note',this.value)"/><button onclick="fpDelRow(${r.id})" style="background:none;border:none;color:var(--tm);font-size:18px;cursor:pointer;padding:9px 12px;opacity:.4">×</button>`;
+      c.appendChild(row);
+    });
+  }
+  rows('inc','fp-inc-rows','var(--gr)');rows('exp','fp-exp-rows','var(--rd)');
+  $('fp-comment').value=sc.comment||'';
+}
+
+// ══════════ START ══════════
+setGK('goal');
+updateNotifBtn();
+updateBanner();
+render();
+switchSection('missions');
+</script>
+</body>
+</html>
